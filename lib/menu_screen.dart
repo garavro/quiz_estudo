@@ -44,10 +44,36 @@ class _MenuScreenState extends State<MenuScreen> {
   ];
 
   @override
-  void initState() {
-    super.initState();
-    _carregarPreferencias();
-  }
+void initState() {
+  super.initState();
+  _carregarPreferencias();
+  _verificarAvisoAntiCheat();
+}
+
+  Future<void> _verificarAvisoAntiCheat() async {
+  final prefs = await SharedPreferences.getInstance();
+
+  final antiCheatAcionado = prefs.getBool('anti_cheat_acionado') ?? false;
+
+  if (!antiCheatAcionado) return;
+
+  await prefs.remove('anti_cheat_acionado');
+
+  if (!mounted) return;
+
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'A rodada foi encerrada porque o anti-cheat foi acionado.',
+        ),
+        backgroundColor: Colors.redAccent,
+      ),
+    );
+  });
+}
 
   Future<void> _carregarPreferencias() async {
     final prefs = await SharedPreferences.getInstance();

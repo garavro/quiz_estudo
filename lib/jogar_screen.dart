@@ -84,17 +84,18 @@ class _JogarScreenState extends State<JogarScreen>
   }
 
   @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    super.didChangeAppLifecycleState(state);
+  @override
+void didChangeAppLifecycleState(AppLifecycleState state) {
+  super.didChangeAppLifecycleState(state);
 
-    if (_finalizando || _antiColaAcionado) return;
+  if (_finalizando || _antiColaAcionado) return;
 
-   if (state == AppLifecycleState.paused ||
-    state == AppLifecycleState.inactive ||
-    state == AppLifecycleState.hidden) {
-  _encerrarPorSaidaDoApp();
-}
+  if (state == AppLifecycleState.paused ||
+      state == AppLifecycleState.inactive ||
+      state == AppLifecycleState.hidden) {
+    _encerrarPorSaidaDoApp();
   }
+}
 
   int get _multiplicadorDificuldade {
     return ScoreService.multiplicadorPorDificuldade(widget.dificuldade);
@@ -221,25 +222,25 @@ class _JogarScreenState extends State<JogarScreen>
   }
 
   Future<void> _encerrarPorSaidaDoApp() async {
-    if (_antiColaAcionado || _finalizando) return;
+  if (_antiColaAcionado || _finalizando) return;
 
-    _antiColaAcionado = true;
+  _antiColaAcionado = true;
 
-    final respondidas = _historicoRespostas.length;
-    final restantes = _questoes.length - respondidas;
-
-    if (restantes > 0) {
-      _erradas += restantes;
-    }
-
-    if (mounted) {
-      setState(() {
-        _finalizando = true;
-      });
-    }
-
-    await _mostrarFimDeJogo();
+  if (mounted) {
+    setState(() {
+      _finalizando = true;
+    });
   }
+
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setBool('anti_cheat_acionado', true);
+
+  await AntiCheatService.desativarProtecao();
+
+  if (!mounted) return;
+
+  Navigator.of(context).popUntil((route) => route.isFirst);
+}
 
   Future<void> _mostrarFimDeJogo() async {
     String nivelFinal = widget.nivelAtual;
