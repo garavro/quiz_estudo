@@ -4,9 +4,15 @@ import 'package:flutter/services.dart';
 class AntiCheatService {
   static const MethodChannel _channel = MethodChannel('quiz_estudo/anti_cheat');
 
+  static bool get _suportaProtecaoNativa {
+    if (kIsWeb) return false;
+
+    return defaultTargetPlatform == TargetPlatform.android;
+  }
+
   static Future<void> ativarProtecao() async {
-    if (kIsWeb) {
-      debugPrint('Anti-cola não suportado no Web.');
+    if (!_suportaProtecaoNativa) {
+      debugPrint('Anti-cola nativo disponível apenas no Android.');
       return;
     }
 
@@ -18,7 +24,7 @@ class AntiCheatService {
   }
 
   static Future<void> desativarProtecao() async {
-    if (kIsWeb) {
+    if (!_suportaProtecaoNativa) {
       return;
     }
 

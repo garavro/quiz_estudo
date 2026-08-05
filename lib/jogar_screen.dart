@@ -89,9 +89,11 @@ class _JogarScreenState extends State<JogarScreen>
 
     if (_finalizando || _antiColaAcionado) return;
 
-    if (state == AppLifecycleState.paused) {
-      _encerrarPorSaidaDoApp();
-    }
+   if (state == AppLifecycleState.paused ||
+    state == AppLifecycleState.inactive ||
+    state == AppLifecycleState.hidden) {
+  _encerrarPorSaidaDoApp();
+}
   }
 
   int get _multiplicadorDificuldade {

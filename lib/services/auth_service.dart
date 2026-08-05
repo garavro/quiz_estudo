@@ -1,5 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
-
+import 'package:flutter/foundation.dart';
 import 'level_service.dart';
 
 class AuthService {
@@ -15,27 +15,41 @@ class AuthService {
     );
   }
 
-  Future<AuthResponse> cadastrar({
-    required String email,
-    required String senha,
-    required String nome,
-    required String dataNascimento,
-    required String serieEscolar,
-  }) async {
-    final nivelInicial = LevelService.nivelPorSerieEscolar(serieEscolar);
+ Future<AuthResponse> cadastrar({
+  required String email,
+  required String senha,
+  required String nome,
+  required String dataNascimento,
+  required String serieEscolar,
+}) async {
+  final nivelInicial = LevelService.nivelPorSerieEscolar(serieEscolar);
 
-    return await _supabase.auth.signUp(
-      email: email.trim(),
-      password: senha,
-      data: {
-        'nome_completo': nome,
-        'data_nascimento': dataNascimento,
-        'serie_escolar': serieEscolar,
-        'nivel_atual': nivelInicial,
-        'titulo_atual': LevelService.tituloIniciante,
-      },
-    );
+  return await _supabase.auth.signUp(
+    email: email.trim(),
+    password: senha,
+    emailRedirectTo: _redirectRecuperacaoSenha,
+    data: {
+      'nome_completo': nome,
+      'data_nascimento': dataNascimento,
+      'serie_escolar': serieEscolar,
+      'nivel_atual': nivelInicial,
+      'titulo_atual': LevelService.tituloIniciante,
+    },
+  );
+}
+
+  String get _redirectRecuperacaoSenha {
+  if (kIsWeb) {
+    final origem = '${Uri.base.scheme}://${Uri.base.authority}';
+    final caminho = Uri.base.path.endsWith('/')
+        ? Uri.base.path
+        : '${Uri.base.path}/';
+
+    return '$origem$caminho';
   }
+
+  return 'quizestudo://recuperar-senha';
+}
 
   Future<void> recuperarSenha(String email) async {
     await _supabase.auth.resetPasswordForEmail(
@@ -44,11 +58,11 @@ class AuthService {
   }
 
   Future<void> enviarEmailRecuperacao(String email) async {
-    await _supabase.auth.resetPasswordForEmail(
-      email.trim(),
-      redirectTo: 'quizestudo://recuperar-senha',
-    );
-  }
+  await _supabase.auth.resetPasswordForEmail(
+    email.trim(),
+    redirectTo: _redirectRecuperacaoSenha,
+  );
+}
 
   Future<void> atualizarSenha(String novaSenha) async {
     await _supabase.auth.updateUser(
