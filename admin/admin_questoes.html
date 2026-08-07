@@ -1,0 +1,1791 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Admin - Cadastro de Questões</title>
+
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [["$", "$"], ["\\(", "\\)"]],
+        displayMath: [["$$", "$$"], ["\\[", "\\]"]]
+      },
+      svg: {
+        fontCache: "global"
+      }
+    };
+  </script>
+
+  <script
+    src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"
+    async>
+  </script>
+
+  <style>
+    :root {
+      --azul: #2473ed;
+      --azul-escuro: #1659bd;
+      --verde: #1a9b55;
+      --vermelho: #d93025;
+      --cinza: #f4f6f8;
+      --texto: #222;
+      --borda: #d8dee8;
+      --amarelo: #fff3cd;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--cinza);
+      margin: 0;
+      padding: 20px;
+      color: var(--texto);
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: auto;
+    }
+
+    h1, h2 {
+      text-align: center;
+      margin-top: 0;
+    }
+
+    .card {
+      background: white;
+      padding: 22px;
+      margin-bottom: 22px;
+      border-radius: 14px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    }
+
+    label {
+      font-weight: bold;
+      display: block;
+      margin-top: 12px;
+      margin-bottom: 5px;
+    }
+
+    input, textarea, select {
+      width: 100%;
+      padding: 11px;
+      border-radius: 8px;
+      border: 1px solid var(--borda);
+      font-size: 15px;
+      background: white;
+    }
+
+    textarea {
+      min-height: 110px;
+      resize: vertical;
+    }
+
+    button {
+      margin-top: 14px;
+      padding: 12px 18px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      background: var(--azul);
+      color: white;
+      font-size: 15px;
+    }
+
+    button:hover {
+      background: var(--azul-escuro);
+    }
+
+    button.secondary {
+      background: #555;
+    }
+
+    button.secondary:hover {
+      background: #333;
+    }
+
+    button.success {
+      background: var(--verde);
+    }
+
+    button.success:hover {
+      background: #11763e;
+    }
+
+    button.danger {
+      background: var(--vermelho);
+    }
+
+    button.danger:hover {
+      background: #a81f17;
+    }
+
+    button.warning {
+      background: #f4a100;
+      color: #222;
+    }
+
+    button.warning:hover {
+      background: #d98d00;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .row-3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 16px;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .status {
+      padding: 12px;
+      margin-top: 15px;
+      border-radius: 8px;
+      display: none;
+      font-weight: bold;
+    }
+
+    .ok {
+      background: #d7f8df;
+      color: #0f6b2f;
+      display: block;
+    }
+
+    .erro {
+      background: #ffdada;
+      color: #9b1c1c;
+      display: block;
+    }
+
+    .aviso {
+      background: var(--amarelo);
+      color: #8a6200;
+      display: block;
+    }
+
+    .contador {
+      font-weight: bold;
+      color: var(--azul);
+      padding: 11px;
+      background: #eef4ff;
+      border-radius: 8px;
+      border: 1px solid #d9e7ff;
+    }
+
+    .info {
+      background: #eef4ff;
+      border-left: 4px solid var(--azul);
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 18px;
+      color: #24466f;
+    }
+
+    .latex-guia {
+      background: #fffdf5;
+      border: 1px solid #f0d98c;
+      border-radius: 12px;
+      padding: 15px;
+      margin-top: 18px;
+      margin-bottom: 18px;
+    }
+
+    .latex-guia h3 {
+      text-align: left;
+      margin-top: 0;
+      color: #6b4b00;
+    }
+
+    .latex-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+
+    .latex-item {
+      background: white;
+      border: 1px solid #eadca8;
+      border-radius: 8px;
+      padding: 10px;
+    }
+
+    .latex-item code {
+      display: block;
+      background: #f7f7f7;
+      padding: 7px;
+      border-radius: 6px;
+      margin-top: 5px;
+      margin-bottom: 6px;
+      color: #222;
+      font-size: 14px;
+      overflow-x: auto;
+    }
+
+    .latex-item button {
+      margin-top: 5px;
+      padding: 7px 10px;
+      font-size: 12px;
+    }
+
+    .latex-observacao {
+      font-size: 14px;
+      color: #5c4500;
+      margin-bottom: 12px;
+    }
+
+    .preview-box {
+      margin-top: 12px;
+      padding: 12px;
+      border: 1px dashed #b8c6d9;
+      border-radius: 10px;
+      background: #fafcff;
+    }
+
+    .preview-box img {
+      max-width: 320px;
+      max-height: 240px;
+      margin-top: 8px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      background: white;
+      display: block;
+    }
+
+    .preview-questao {
+      margin-top: 20px;
+      padding: 18px;
+      border: 2px solid #d9e7ff;
+      border-radius: 14px;
+      background: #f8fbff;
+    }
+
+    .preview-questao h3 {
+      text-align: left;
+      margin-top: 0;
+      color: #1659bd;
+    }
+
+    .preview-meta {
+      margin-bottom: 12px;
+    }
+
+    .preview-meta span {
+      display: inline-block;
+      background: #eef4ff;
+      color: #1659bd;
+      padding: 5px 10px;
+      border-radius: 15px;
+      font-weight: bold;
+      font-size: 13px;
+      margin-right: 6px;
+      margin-bottom: 6px;
+    }
+
+    .preview-enunciado {
+      background: white;
+      padding: 15px;
+      border-radius: 10px;
+      border: 1px solid #d8dee8;
+      margin-bottom: 15px;
+      text-align: justify;
+      line-height: 1.6;
+    }
+
+    .preview-imagem {
+      text-align: center;
+      margin: 15px 0;
+    }
+
+    .preview-imagem img {
+      max-width: 100%;
+      max-height: 320px;
+      border-radius: 10px;
+      border: 1px solid #ddd;
+      background: white;
+    }
+
+    .preview-alternativas {
+      display: grid;
+      gap: 10px;
+    }
+
+    .preview-alternativa {
+      background: white;
+      border: 1px solid #d8dee8;
+      border-radius: 10px;
+      padding: 12px;
+      line-height: 1.5;
+    }
+
+    .preview-correta {
+      border: 2px solid #1a9b55;
+      background: #effaf3;
+    }
+
+    .preview-correta::before {
+      content: "Resposta correta";
+      display: inline-block;
+      background: #1a9b55;
+      color: white;
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+
+    .imagem-miniatura {
+      max-width: 80px;
+      max-height: 60px;
+      border-radius: 6px;
+      border: 1px solid #ddd;
+      background: white;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+      font-size: 14px;
+      background: white;
+    }
+
+    th, td {
+      padding: 10px;
+      border-bottom: 1px solid #e0e0e0;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #eef2f7;
+      font-weight: bold;
+    }
+
+    tr:hover {
+      background: #f8fbff;
+    }
+
+    .acoes {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .acoes button {
+      margin-top: 0;
+      padding: 7px 9px;
+      font-size: 12px;
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 20px;
+      background: #eef4ff;
+      color: var(--azul);
+      font-size: 12px;
+      font-weight: bold;
+      margin-right: 4px;
+      margin-bottom: 4px;
+    }
+
+    .footer {
+      text-align: center;
+      color: #777;
+      font-size: 13px;
+      margin-top: 30px;
+    }
+
+    @media (max-width: 800px) {
+      .row,
+      .row-3,
+      .latex-grid {
+        grid-template-columns: 1fr;
+      }
+
+      table {
+        font-size: 12px;
+      }
+
+      th, td {
+        padding: 7px;
+      }
+
+      .card {
+        padding: 16px;
+      }
+
+      .preview-box img {
+        max-width: 100%;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>Administração de Questões</h1>
+
+    <div id="loginCard" class="card">
+      <h2>Login do Colaborador</h2>
+
+      <div class="info">
+        Use seu e-mail e senha para entrar. Caso ainda não tenha acesso liberado,
+        informe também o código de acesso fornecido pela coordenação.
+      </div>
+
+      <label for="email">E-mail</label>
+      <input id="email" type="email" placeholder="Digite seu e-mail" autocomplete="email" />
+
+      <label for="senha">Senha</label>
+      <input id="senha" type="password" placeholder="Digite sua senha" autocomplete="current-password" />
+
+      <label for="codigoAcesso">Código de acesso</label>
+      <input id="codigoAcesso" type="text" placeholder="Exemplo: OLIMPIADA2026" />
+
+      <button onclick="login()">Entrar</button>
+      <button class="secondary" onclick="criarContaColaborador()">Criar conta de colaborador</button>
+
+      <div id="loginStatus" class="status"></div>
+    </div>
+
+    <div id="appAdmin" class="hidden">
+      <div class="card">
+        <div class="topbar">
+          <div>
+            <strong>Usuário logado:</strong>
+            <span id="usuarioLogado"></span>
+          </div>
+
+          <div>
+            <button class="secondary" onclick="atualizarSessao()">Atualizar sessão</button>
+            <button class="danger" onclick="logout()">Sair</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 id="tituloFormulario">Adicionar Nova Questão</h2>
+
+        <div class="latex-guia">
+          <h3>Guia rápido de LaTeX para fórmulas matemáticas</h3>
+
+          <div class="latex-observacao">
+            Clique primeiro no campo onde deseja escrever a fórmula, depois clique em um exemplo.
+            Use <strong>$...$</strong> para fórmula no meio do texto e
+            <strong>$$...$$</strong> para fórmula destacada.
+          </div>
+
+          <div class="latex-grid">
+            <div class="latex-item">
+              <strong>Fração</strong>
+              <code>$\frac{a}{b}$</code>
+              <button type="button" onclick="inserirLatex('$\\frac{a}{b}$')">Inserir</button>
+            </div>
+
+            <div class="latex-item">
+              <strong>Potência</strong>
+              <code>$x^2$</code>
+              <button type="button" onclick="inserirLatex('$x^2$')">Inserir</button>
+            </div>
+
+            <div class="latex-item">
+              <strong>Raiz quadrada</strong>
+              <code>$\sqrt{x}$</code>
+              <button type="button" onclick="inserirLatex('$\\sqrt{x}$')">Inserir</button>
+            </div>
+
+            <div class="latex-item">
+              <strong>Raiz com índice</strong>
+              <code>$\sqrt[3]{x}$</code>
+              <button type="button" onclick="inserirLatex('$\\sqrt[3]{x}$')">Inserir</button>
+            </div>
+
+            <div class="latex-item">
+              <strong>Equação do 2º grau</strong>
+              <code>$ax^2 + bx + c = 0$</code>
+              <button type="button" onclick="inserirLatex('$ax^2 + bx + c = 0$')">Inserir</button>
+            </div>
+
+            <div class="latex-item">
+              <strong>Fórmula de Bhaskara</strong>
+              <code>$x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}$</code>
+              <button type="button" onclick="inserirLatex('$x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$')">Inserir</button>
+            </div>
+
+            <div class="latex-item">
+              <strong>Menor ou igual</strong>
+              <code>$x \leq 10$</code>
+              <button type="button" onclick="inserirLatex('$x \\leq 10$')">Inserir</button>
+            </div>
+
+            <div class="latex-item">
+              <strong>Maior ou igual</strong>
+              <code>$x \geq 5$</code>
+              <button type="button" onclick="inserirLatex('$x \\geq 5$')">Inserir</button>
+            </div>
+
+            <div class="latex-item">
+              <strong>Diferente</strong>
+              <code>$x \neq 0$</code>
+              <button type="button" onclick="inserirLatex('$x \\neq 0$')">Inserir</button>
+            </div>
+
+            <div class="latex-item">
+              <strong>Aproximadamente</strong>
+              <code>$\pi \approx 3,14$</code>
+              <button type="button" onclick="inserirLatex('$\\pi \\approx 3,14$')">Inserir</button>
+            </div>
+
+            <div class="latex-item">
+              <strong>Ângulo</strong>
+              <code>$90^\circ$</code>
+              <button type="button" onclick="inserirLatex('$90^\\circ$')">Inserir</button>
+            </div>
+
+            <div class="latex-item">
+              <strong>Área do círculo</strong>
+              <code>$A = \pi r^2$</code>
+              <button type="button" onclick="inserirLatex('$A = \\pi r^2$')">Inserir</button>
+            </div>
+
+            <div class="latex-item">
+              <strong>Porcentagem</strong>
+              <code>$25\%$</code>
+              <button type="button" onclick="inserirLatex('$25\\%$')">Inserir</button>
+            </div>
+
+            <div class="latex-item">
+              <strong>Multiplicação</strong>
+              <code>$3 \times 4 = 12$</code>
+              <button type="button" onclick="inserirLatex('$3 \\times 4 = 12$')">Inserir</button>
+            </div>
+
+            <div class="latex-item">
+              <strong>Divisão</strong>
+              <code>$12 \div 3 = 4$</code>
+              <button type="button" onclick="inserirLatex('$12 \\div 3 = 4$')">Inserir</button>
+            </div>
+
+            <div class="latex-item">
+              <strong>Razão</strong>
+              <code>$\frac{2}{3}$</code>
+              <button type="button" onclick="inserirLatex('$\\frac{2}{3}$')">Inserir</button>
+            </div>
+
+            <div class="latex-item">
+              <strong>Sistema de equações</strong>
+              <code>$$\begin{cases} x+y=10 \\ x-y=2 \end{cases}$$</code>
+              <button type="button" onclick="inserirLatex('$$\\begin{cases} x+y=10 \\\\ x-y=2 \\end{cases}$$')">Inserir</button>
+            </div>
+
+            <div class="latex-item">
+              <strong>Matriz</strong>
+              <code>$$\begin{bmatrix} 1 & 2 \\ 3 & 4 \end{bmatrix}$$</code>
+              <button type="button" onclick="inserirLatex('$$\\begin{bmatrix} 1 & 2 \\\\ 3 & 4 \\end{bmatrix}$$')">Inserir</button>
+            </div>
+          </div>
+        </div>
+
+        <input id="questaoIdEdicao" type="hidden" />
+
+        <label for="pergunta">Pergunta</label>
+        <textarea id="pergunta" placeholder="Digite o enunciado da questão"></textarea>
+
+        <label for="imagem_url">Link da imagem</label>
+        <input
+          id="imagem_url"
+          placeholder="Será preenchido automaticamente após enviar a imagem"
+          oninput="mostrarPreviewPorUrl()"
+        />
+
+        <label for="arquivoImagem">Enviar imagem do computador</label>
+        <input
+          id="arquivoImagem"
+          type="file"
+          accept=".png,.jpg,.jpeg,.webp,.gif,.svg,image/png,image/jpeg,image/webp,image/gif,image/svg+xml"
+          onchange="mostrarPreviewImagem()"
+        />
+
+        <div id="previewImagemArea" class="preview-box hidden">
+          <strong>Pré-visualização da imagem:</strong>
+          <img
+            id="previewImagem"
+            src=""
+            alt="Pré-visualização da imagem da questão"
+          />
+
+          <button class="secondary" onclick="limparImagemSelecionada()" type="button">
+            Remover imagem selecionada
+          </button>
+
+          <button class="danger" onclick="removerImagemDaQuestao()" type="button">
+            Remover imagem da questão
+          </button>
+        </div>
+
+        <div class="row">
+          <div>
+            <label for="serie">Série/Categoria</label>
+            <select id="serie" onchange="atualizarNivelAutomatico()">
+              <option value="4 e 5 ano">4º e 5º ano</option>
+              <option value="6 e 7 ano">6º e 7º ano</option>
+              <option value="8 e 9 ano">8º e 9º ano</option>
+              <option value="Ensino Medio">Ensino Médio</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="nivel">Nível</label>
+            <select id="nivel">
+              <option value="nivel_1">Nível I</option>
+              <option value="nivel_2">Nível II</option>
+              <option value="nivel_3">Nível III</option>
+              <option value="nivel_4">Nível IV</option>
+            </select>
+          </div>
+        </div>
+
+        <label for="dificuldade">Dificuldade</label>
+        <select id="dificuldade">
+          <option value="facil">Fácil</option>
+          <option value="medio">Médio</option>
+          <option value="dificil">Difícil</option>
+        </select>
+
+        <label for="alternativa_correta">Alternativa correta</label>
+        <input id="alternativa_correta" placeholder="Digite a alternativa correta" />
+
+        <label for="alternativa_errada1">Alternativa errada 1</label>
+        <input id="alternativa_errada1" placeholder="Digite a alternativa errada 1" />
+
+        <label for="alternativa_errada2">Alternativa errada 2</label>
+        <input id="alternativa_errada2" placeholder="Digite a alternativa errada 2" />
+
+        <label for="alternativa_errada3">Alternativa errada 3</label>
+        <input id="alternativa_errada3" placeholder="Digite a alternativa errada 3" />
+
+        <label for="alternativa_errada4">Alternativa errada 4</label>
+        <input id="alternativa_errada4" placeholder="Digite a alternativa errada 4" />
+
+        <button class="warning" onclick="preVisualizarQuestao()" type="button">
+          Pré-visualizar questão
+        </button>
+
+        <button id="btnSalvar" class="success" onclick="salvarQuestao()" type="button">
+          Adicionar questão
+        </button>
+
+        <button class="secondary" onclick="limparFormulario()" type="button">
+          Limpar formulário
+        </button>
+
+        <div id="previewQuestaoArea" class="preview-questao hidden">
+          <h3>Pré-visualização da questão</h3>
+
+          <div class="preview-meta">
+            <span id="previewSerie"></span>
+            <span id="previewNivel"></span>
+            <span id="previewDificuldade"></span>
+          </div>
+
+          <div id="previewEnunciado" class="preview-enunciado"></div>
+
+          <div id="previewImagemQuestao" class="preview-imagem hidden">
+            <img id="previewImagemQuestaoImg" src="" alt="Imagem da questão" />
+          </div>
+
+          <div class="preview-alternativas">
+            <div id="previewAltA" class="preview-alternativa"></div>
+            <div id="previewAltB" class="preview-alternativa"></div>
+            <div id="previewAltC" class="preview-alternativa"></div>
+            <div id="previewAltD" class="preview-alternativa"></div>
+            <div id="previewAltE" class="preview-alternativa"></div>
+          </div>
+
+          <div class="info" style="margin-top: 15px;">
+            Revise a questão acima. Se estiver tudo correto, clique em
+            <strong>Adicionar questão</strong> ou <strong>Salvar alterações</strong>.
+          </div>
+        </div>
+
+        <div id="formStatus" class="status"></div>
+      </div>
+
+      <div class="card">
+        <h2>Questões Registradas</h2>
+
+        <div class="row">
+          <div>
+            <label for="busca">Pesquisar por palavra no enunciado</label>
+            <input id="busca" placeholder="Exemplo: fração, geometria, área..." oninput="listarQuestoes()" />
+          </div>
+
+          <div>
+            <label for="filtroNivel">Filtrar por nível</label>
+            <select id="filtroNivel" onchange="listarQuestoes()">
+              <option value="">Todos</option>
+              <option value="nivel_1">Nível I</option>
+              <option value="nivel_2">Nível II</option>
+              <option value="nivel_3">Nível III</option>
+              <option value="nivel_4">Nível IV</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row-3">
+          <div>
+            <label for="filtroDificuldade">Filtrar por dificuldade</label>
+            <select id="filtroDificuldade" onchange="listarQuestoes()">
+              <option value="">Todas</option>
+              <option value="facil">Fácil</option>
+              <option value="medio">Médio</option>
+              <option value="dificil">Difícil</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="filtroSerie">Filtrar por série/categoria</label>
+            <select id="filtroSerie" onchange="listarQuestoes()">
+              <option value="">Todas</option>
+              <option value="4 e 5 ano">4º e 5º ano</option>
+              <option value="6 e 7 ano">6º e 7º ano</option>
+              <option value="8 e 9 ano">8º e 9º ano</option>
+              <option value="Ensino Medio">Ensino Médio</option>
+            </select>
+          </div>
+
+          <div>
+            <label>Quantidade carregada</label>
+            <div class="contador" id="contadorQuestoes">0 questões</div>
+          </div>
+        </div>
+
+        <button onclick="listarQuestoes()">Atualizar lista</button>
+
+        <div style="overflow-x:auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Imagem</th>
+                <th>Pergunta</th>
+                <th>Série</th>
+                <th>Nível</th>
+                <th>Dificuldade</th>
+                <th>Correta</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="tabelaQuestoes"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      Painel administrativo de cadastro de questões.
+    </div>
+  </div>
+
+  <script type="module">
+    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
+
+    const SUPABASE_URL = "https://ojkkstibwifhbplakjfw.supabase.co";
+
+    const SUPABASE_ANON_KEY = "sb_publishable_-hhQBjLfzt7GhINAq1CLxA_-kjpJNyq";
+
+    const BUCKET_IMAGENS = "questoes-imagens";
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    let questoesCarregadas = [];
+    let previewConfirmado = false;
+    let campoLatexAtivo = "pergunta";
+
+    window.supabaseClient = supabase;
+
+    window.mostrarStatus = function(id, mensagem, tipo) {
+      const el = document.getElementById(id);
+      el.className = "status " + tipo;
+      el.innerText = mensagem;
+    };
+
+    window.limparStatus = function(id) {
+      const el = document.getElementById(id);
+      el.className = "status";
+      el.innerText = "";
+    };
+
+    window.escaparHtml = function(texto) {
+      return texto
+        .toString()
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    };
+
+    window.normalizarTexto = function(texto) {
+      return texto
+        .toString()
+        .trim()
+        .replace(/\s+/g, " ");
+    };
+
+    window.login = async function() {
+      limparStatus("loginStatus");
+
+      const email = document.getElementById("email").value.trim();
+      const senha = document.getElementById("senha").value;
+      const codigo = document.getElementById("codigoAcesso").value.trim();
+
+      if (!email || !senha) {
+        mostrarStatus("loginStatus", "Informe e-mail e senha.", "erro");
+        return;
+      }
+
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password: senha
+      });
+
+      if (error) {
+        mostrarStatus("loginStatus", "Erro no login: " + error.message, "erro");
+        return;
+      }
+
+      const jaEhAdmin = await verificarAdminRetorno(data.user);
+
+      if (jaEhAdmin) {
+        abrirPainel(data.user);
+        return;
+      }
+
+      if (!codigo) {
+        await supabase.auth.signOut();
+        mostrarStatus(
+          "loginStatus",
+          "Login realizado, mas este usuário ainda não tem permissão. Informe o código de acesso.",
+          "aviso"
+        );
+        return;
+      }
+
+      const liberou = await usarCodigoDeAcesso(codigo);
+
+      if (!liberou) {
+        await supabase.auth.signOut();
+        mostrarStatus(
+          "loginStatus",
+          "Código inválido, expirado ou sem usos disponíveis.",
+          "erro"
+        );
+        return;
+      }
+
+      abrirPainel(data.user);
+    };
+
+    window.criarContaColaborador = async function() {
+      limparStatus("loginStatus");
+
+      const email = document.getElementById("email").value.trim();
+      const senha = document.getElementById("senha").value;
+      const codigo = document.getElementById("codigoAcesso").value.trim();
+
+      if (!email || !senha || !codigo) {
+        mostrarStatus(
+          "loginStatus",
+          "Informe e-mail, senha e código de acesso.",
+          "erro"
+        );
+        return;
+      }
+
+      if (senha.length < 8) {
+        mostrarStatus(
+          "loginStatus",
+          "A senha precisa ter pelo menos 8 caracteres.",
+          "erro"
+        );
+        return;
+      }
+
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password: senha
+      });
+
+      if (error) {
+        mostrarStatus(
+          "loginStatus",
+          "Erro ao criar conta: " + error.message,
+          "erro"
+        );
+        return;
+      }
+
+      if (!data.session) {
+        mostrarStatus(
+          "loginStatus",
+          "Conta criada. Confirme o e-mail, depois volte aqui, faça login e use o código de acesso.",
+          "aviso"
+        );
+        return;
+      }
+
+      const liberou = await usarCodigoDeAcesso(codigo);
+
+      if (!liberou) {
+        await supabase.auth.signOut();
+        mostrarStatus(
+          "loginStatus",
+          "Conta criada, mas o código de acesso é inválido ou expirou.",
+          "erro"
+        );
+        return;
+      }
+
+      mostrarStatus(
+        "loginStatus",
+        "Conta criada e acesso liberado com sucesso!",
+        "ok"
+      );
+
+      abrirPainel(data.user);
+    };
+
+    window.usarCodigoDeAcesso = async function(codigo) {
+      const { data, error } = await supabase.rpc("usar_codigo_questoes", {
+        p_codigo: codigo
+      });
+
+      if (error) {
+        mostrarStatus(
+          "loginStatus",
+          "Erro ao validar código: " + error.message,
+          "erro"
+        );
+        return false;
+      }
+
+      return data === true;
+    };
+
+    window.verificarAdminRetorno = async function(user) {
+      if (!user) return false;
+
+      const { data, error } = await supabase
+        .from("admins")
+        .select("user_id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (error) {
+        mostrarStatus(
+          "loginStatus",
+          "Erro ao verificar administrador: " + error.message,
+          "erro"
+        );
+        return false;
+      }
+
+      return !!data;
+    };
+
+    window.abrirPainel = async function(user) {
+      document.getElementById("loginCard").classList.add("hidden");
+      document.getElementById("appAdmin").classList.remove("hidden");
+      document.getElementById("usuarioLogado").innerText = user.email;
+
+      await listarQuestoes();
+    };
+
+    window.atualizarSessao = async function() {
+      const { data } = await supabase.auth.getUser();
+
+      if (!data.user) {
+        location.reload();
+        return;
+      }
+
+      const admin = await verificarAdminRetorno(data.user);
+
+      if (!admin) {
+        await supabase.auth.signOut();
+        location.reload();
+        return;
+      }
+
+      mostrarStatus("formStatus", "Sessão atualizada com sucesso.", "ok");
+      await listarQuestoes();
+    };
+
+    window.logout = async function() {
+      await supabase.auth.signOut();
+      location.reload();
+    };
+
+    window.atualizarNivelAutomatico = function() {
+      const serie = document.getElementById("serie").value;
+      const nivel = document.getElementById("nivel");
+
+      if (serie === "4 e 5 ano") nivel.value = "nivel_1";
+      if (serie === "6 e 7 ano") nivel.value = "nivel_2";
+      if (serie === "8 e 9 ano") nivel.value = "nivel_3";
+      if (serie === "Ensino Medio") nivel.value = "nivel_4";
+    };
+
+    window.registrarCamposLatex = function() {
+      const campos = [
+        "pergunta",
+        "imagem_url",
+        "arquivoImagem",
+        "serie",
+        "nivel",
+        "dificuldade",
+        "alternativa_correta",
+        "alternativa_errada1",
+        "alternativa_errada2",
+        "alternativa_errada3",
+        "alternativa_errada4"
+      ];
+
+      campos.forEach(id => {
+        const campo = document.getElementById(id);
+
+        if (!campo) return;
+
+        campo.addEventListener("focus", () => {
+          if (ehCampoDeTextoLatex(id)) {
+            campoLatexAtivo = id;
+          }
+        });
+
+        campo.addEventListener("click", () => {
+          if (ehCampoDeTextoLatex(id)) {
+            campoLatexAtivo = id;
+          }
+        });
+
+        campo.addEventListener("input", marcarPreviewComoDesatualizado);
+        campo.addEventListener("change", marcarPreviewComoDesatualizado);
+      });
+    };
+
+    window.ehCampoDeTextoLatex = function(id) {
+      return [
+        "pergunta",
+        "alternativa_correta",
+        "alternativa_errada1",
+        "alternativa_errada2",
+        "alternativa_errada3",
+        "alternativa_errada4"
+      ].includes(id);
+    };
+
+    window.inserirLatex = function(textoLatex) {
+      const campo = document.getElementById(campoLatexAtivo);
+
+      if (!campo) {
+        mostrarStatus(
+          "formStatus",
+          "Clique primeiro no campo onde deseja inserir a fórmula.",
+          "erro"
+        );
+        return;
+      }
+
+      const inicio = campo.selectionStart ?? campo.value.length;
+      const fim = campo.selectionEnd ?? campo.value.length;
+
+      const textoAntes = campo.value.substring(0, inicio);
+      const textoDepois = campo.value.substring(fim);
+
+      const precisaEspacoAntes =
+        textoAntes &&
+        !textoAntes.endsWith(" ") &&
+        !textoAntes.endsWith("\n");
+
+      const precisaEspacoDepois =
+        textoDepois &&
+        !textoDepois.startsWith(" ") &&
+        !textoDepois.startsWith("\n");
+
+      const inserir =
+        (precisaEspacoAntes ? " " : "") +
+        textoLatex +
+        (precisaEspacoDepois ? " " : "");
+
+      campo.value = textoAntes + inserir + textoDepois;
+
+      const novaPosicao = textoAntes.length + inserir.length;
+
+      campo.focus();
+      campo.setSelectionRange(novaPosicao, novaPosicao);
+
+      marcarPreviewComoDesatualizado();
+
+      mostrarStatus(
+        "formStatus",
+        "Comando LaTeX inserido no campo selecionado.",
+        "ok"
+      );
+    };
+
+    window.mostrarPreviewImagem = function() {
+      limparStatus("formStatus");
+
+      const input = document.getElementById("arquivoImagem");
+      const arquivo = input.files[0];
+
+      if (!arquivo) return;
+
+      const validacao = validarArquivoImagem(arquivo);
+
+      if (validacao) {
+        mostrarStatus("formStatus", validacao, "erro");
+        input.value = "";
+        return;
+      }
+
+      const urlTemporaria = URL.createObjectURL(arquivo);
+
+      document.getElementById("previewImagem").src = urlTemporaria;
+      document.getElementById("previewImagemArea").classList.remove("hidden");
+
+      marcarPreviewComoDesatualizado();
+    };
+
+    window.mostrarPreviewPorUrl = function() {
+      const url = document.getElementById("imagem_url").value.trim();
+
+      if (!url) return;
+
+      document.getElementById("previewImagem").src = url;
+      document.getElementById("previewImagemArea").classList.remove("hidden");
+
+      marcarPreviewComoDesatualizado();
+    };
+
+    window.validarArquivoImagem = function(arquivo) {
+      const tiposPermitidos = [
+        "image/png",
+        "image/jpeg",
+        "image/webp",
+        "image/gif",
+        "image/svg+xml"
+      ];
+
+      const extensoesPermitidas = [
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".webp",
+        ".gif",
+        ".svg"
+      ];
+
+      const nome = arquivo.name.toLowerCase();
+
+      const tipoValido = tiposPermitidos.includes(arquivo.type);
+      const extensaoValida = extensoesPermitidas.some(ext => nome.endsWith(ext));
+
+      if (!tipoValido && !extensaoValida) {
+        return "Formato de imagem inválido. Use PNG, JPG, JPEG, WEBP, GIF ou SVG.";
+      }
+
+      const tamanhoMaximo = 5 * 1024 * 1024;
+
+      if (arquivo.size > tamanhoMaximo) {
+        return "A imagem é muito grande. O tamanho máximo permitido é 5 MB.";
+      }
+
+      return null;
+    };
+
+    window.limparImagemSelecionada = function() {
+      document.getElementById("arquivoImagem").value = "";
+
+      const urlAtual = document.getElementById("imagem_url").value.trim();
+
+      if (urlAtual) {
+        document.getElementById("previewImagem").src = urlAtual;
+        document.getElementById("previewImagemArea").classList.remove("hidden");
+      } else {
+        document.getElementById("previewImagem").src = "";
+        document.getElementById("previewImagemArea").classList.add("hidden");
+      }
+
+      marcarPreviewComoDesatualizado();
+    };
+
+    window.removerImagemDaQuestao = function() {
+      document.getElementById("arquivoImagem").value = "";
+      document.getElementById("imagem_url").value = "";
+      document.getElementById("previewImagem").src = "";
+      document.getElementById("previewImagemArea").classList.add("hidden");
+
+      marcarPreviewComoDesatualizado();
+    };
+
+    window.normalizarNomeArquivo = function(nome) {
+      return nome
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9.]+/g, "-")
+        .replace(/-+/g, "-")
+        .replace(/^-|-$/g, "");
+    };
+
+    window.gerarIdArquivo = function() {
+      if (window.crypto && window.crypto.randomUUID) {
+        return window.crypto.randomUUID();
+      }
+
+      return Date.now().toString() + "-" + Math.random().toString(16).slice(2);
+    };
+
+    window.enviarImagemSelecionada = async function() {
+      const input = document.getElementById("arquivoImagem");
+      const arquivo = input.files[0];
+
+      if (!arquivo) {
+        return document.getElementById("imagem_url").value.trim();
+      }
+
+      const validacao = validarArquivoImagem(arquivo);
+
+      if (validacao) {
+        throw new Error(validacao);
+      }
+
+      const nomeLimpo = normalizarNomeArquivo(arquivo.name);
+      const nivel = document.getElementById("nivel").value;
+      const dificuldade = document.getElementById("dificuldade").value;
+      const idArquivo = gerarIdArquivo();
+
+      const caminho = `${nivel}/${dificuldade}/${idArquivo}-${nomeLimpo}`;
+
+      const { error } = await supabase.storage
+        .from(BUCKET_IMAGENS)
+        .upload(caminho, arquivo, {
+          cacheControl: "3600",
+          upsert: false,
+          contentType: arquivo.type || "application/octet-stream"
+        });
+
+      if (error) {
+        throw new Error("Erro ao enviar imagem: " + error.message);
+      }
+
+      const { data } = supabase.storage
+        .from(BUCKET_IMAGENS)
+        .getPublicUrl(caminho);
+
+      return data.publicUrl;
+    };
+
+    window.pegarFormulario = function() {
+      return {
+        pergunta: normalizarTexto(document.getElementById("pergunta").value),
+        imagem_url: document.getElementById("imagem_url").value.trim(),
+        serie: document.getElementById("serie").value,
+        nivel: document.getElementById("nivel").value,
+        dificuldade: document.getElementById("dificuldade").value,
+        alternativa_correta: normalizarTexto(document.getElementById("alternativa_correta").value),
+        alternativa_errada1: normalizarTexto(document.getElementById("alternativa_errada1").value),
+        alternativa_errada2: normalizarTexto(document.getElementById("alternativa_errada2").value),
+        alternativa_errada3: normalizarTexto(document.getElementById("alternativa_errada3").value),
+        alternativa_errada4: normalizarTexto(document.getElementById("alternativa_errada4").value)
+      };
+    };
+
+    window.validarQuestao = function(q) {
+      if (!q.pergunta) return "Digite a pergunta.";
+      if (!q.alternativa_correta) return "Digite a alternativa correta.";
+      if (!q.alternativa_errada1) return "Digite a alternativa errada 1.";
+      if (!q.alternativa_errada2) return "Digite a alternativa errada 2.";
+      if (!q.alternativa_errada3) return "Digite a alternativa errada 3.";
+      if (!q.alternativa_errada4) return "Digite a alternativa errada 4.";
+
+      const alternativas = [
+        q.alternativa_correta,
+        q.alternativa_errada1,
+        q.alternativa_errada2,
+        q.alternativa_errada3,
+        q.alternativa_errada4
+      ].map(a => a.toLowerCase());
+
+      const alternativasUnicas = new Set(alternativas);
+
+      if (alternativasUnicas.size !== alternativas.length) {
+        return "As alternativas não podem ser repetidas.";
+      }
+
+      return null;
+    };
+
+    window.preVisualizarQuestao = function() {
+      limparStatus("formStatus");
+
+      const q = pegarFormulario();
+      const erroValidacao = validarQuestao(q);
+
+      if (erroValidacao) {
+        mostrarStatus("formStatus", erroValidacao, "erro");
+        return;
+      }
+
+      document.getElementById("previewSerie").innerText = q.serie;
+      document.getElementById("previewNivel").innerText = nomeNivel(q.nivel);
+      document.getElementById("previewDificuldade").innerText = nomeDificuldade(q.dificuldade);
+
+      document.getElementById("previewEnunciado").innerHTML =
+        formatarTextoPreview(q.pergunta);
+
+      const imagemPreview = obterImagemParaPreview();
+
+      if (imagemPreview) {
+        document.getElementById("previewImagemQuestaoImg").src = imagemPreview;
+        document.getElementById("previewImagemQuestao").classList.remove("hidden");
+      } else {
+        document.getElementById("previewImagemQuestaoImg").src = "";
+        document.getElementById("previewImagemQuestao").classList.add("hidden");
+      }
+
+      document.getElementById("previewAltA").className =
+        "preview-alternativa preview-correta";
+      document.getElementById("previewAltA").innerHTML =
+        "<strong>A)</strong> " + formatarTextoPreview(q.alternativa_correta);
+
+      document.getElementById("previewAltB").className = "preview-alternativa";
+      document.getElementById("previewAltB").innerHTML =
+        "<strong>B)</strong> " + formatarTextoPreview(q.alternativa_errada1);
+
+      document.getElementById("previewAltC").className = "preview-alternativa";
+      document.getElementById("previewAltC").innerHTML =
+        "<strong>C)</strong> " + formatarTextoPreview(q.alternativa_errada2);
+
+      document.getElementById("previewAltD").className = "preview-alternativa";
+      document.getElementById("previewAltD").innerHTML =
+        "<strong>D)</strong> " + formatarTextoPreview(q.alternativa_errada3);
+
+      document.getElementById("previewAltE").className = "preview-alternativa";
+      document.getElementById("previewAltE").innerHTML =
+        "<strong>E)</strong> " + formatarTextoPreview(q.alternativa_errada4);
+
+      document.getElementById("previewQuestaoArea").classList.remove("hidden");
+
+      previewConfirmado = true;
+
+      if (window.MathJax && window.MathJax.typesetPromise) {
+        MathJax.typesetPromise([
+          document.getElementById("previewQuestaoArea")
+        ]);
+      }
+
+      mostrarStatus(
+        "formStatus",
+        "Pré-visualização gerada. Revise a questão antes de salvar.",
+        "ok"
+      );
+
+      document.getElementById("previewQuestaoArea").scrollIntoView({
+        behavior: "smooth",
+        block: "start"
+      });
+    };
+
+    window.formatarTextoPreview = function(texto) {
+      const seguro = escaparHtml(texto || "");
+      return seguro.replace(/\n/g, "<br>");
+    };
+
+    window.obterImagemParaPreview = function() {
+      const inputArquivo = document.getElementById("arquivoImagem");
+      const arquivo = inputArquivo.files[0];
+
+      if (arquivo) {
+        return URL.createObjectURL(arquivo);
+      }
+
+      const url = document.getElementById("imagem_url").value.trim();
+
+      if (url) {
+        return url;
+      }
+
+      return "";
+    };
+
+    window.marcarPreviewComoDesatualizado = function() {
+      previewConfirmado = false;
+
+      const area = document.getElementById("previewQuestaoArea");
+
+      if (area && !area.classList.contains("hidden")) {
+        mostrarStatus(
+          "formStatus",
+          "A questão foi alterada. Gere a pré-visualização novamente antes de salvar.",
+          "aviso"
+        );
+      }
+    };
+
+    window.salvarQuestao = async function() {
+      limparStatus("formStatus");
+
+      if (!previewConfirmado) {
+        mostrarStatus(
+          "formStatus",
+          "Antes de salvar, clique em Pré-visualizar questão e revise o conteúdo.",
+          "aviso"
+        );
+        return;
+      }
+
+      const idEdicao = document.getElementById("questaoIdEdicao").value;
+      const q = pegarFormulario();
+      const erroValidacao = validarQuestao(q);
+
+      if (erroValidacao) {
+        mostrarStatus("formStatus", erroValidacao, "erro");
+        return;
+      }
+
+      let queryDuplicada = supabase
+        .from("quest")
+        .select("id, pergunta")
+        .eq("pergunta", q.pergunta);
+
+      if (idEdicao) {
+        queryDuplicada = queryDuplicada.neq("id", idEdicao);
+      }
+
+      const { data: duplicadas, error: erroBusca } = await queryDuplicada;
+
+      if (erroBusca) {
+        mostrarStatus(
+          "formStatus",
+          "Erro ao verificar duplicidade: " + erroBusca.message,
+          "erro"
+        );
+        return;
+      }
+
+      if (duplicadas && duplicadas.length > 0) {
+        mostrarStatus(
+          "formStatus",
+          "Atenção: já existe uma questão cadastrada com esse mesmo enunciado. ID: " + duplicadas[0].id,
+          "aviso"
+        );
+        return;
+      }
+
+      try {
+        const imagemUrl = await enviarImagemSelecionada();
+        q.imagem_url = imagemUrl || "";
+      } catch (erro) {
+        mostrarStatus("formStatus", erro.message, "erro");
+        return;
+      }
+
+      if (idEdicao) {
+        const { error } = await supabase
+          .from("quest")
+          .update(q)
+          .eq("id", idEdicao);
+
+        if (error) {
+          mostrarStatus(
+            "formStatus",
+            "Erro ao atualizar questão: " + error.message,
+            "erro"
+          );
+          return;
+        }
+
+        mostrarStatus("formStatus", "Questão atualizada com sucesso!", "ok");
+      } else {
+        const { error } = await supabase
+          .from("quest")
+          .insert(q);
+
+        if (error) {
+          mostrarStatus(
+            "formStatus",
+            "Erro ao adicionar questão: " + error.message,
+            "erro"
+          );
+          return;
+        }
+
+        mostrarStatus("formStatus", "Questão adicionada com sucesso!", "ok");
+      }
+
+      limparFormulario();
+      await listarQuestoes();
+    };
+
+    window.limparFormulario = function() {
+      document.getElementById("tituloFormulario").innerText = "Adicionar Nova Questão";
+      document.getElementById("btnSalvar").innerText = "Adicionar questão";
+      document.getElementById("questaoIdEdicao").value = "";
+
+      document.getElementById("pergunta").value = "";
+      document.getElementById("imagem_url").value = "";
+      document.getElementById("arquivoImagem").value = "";
+      document.getElementById("previewImagem").src = "";
+      document.getElementById("previewImagemArea").classList.add("hidden");
+
+      document.getElementById("serie").value = "4 e 5 ano";
+      document.getElementById("nivel").value = "nivel_1";
+      document.getElementById("dificuldade").value = "facil";
+
+      document.getElementById("alternativa_correta").value = "";
+      document.getElementById("alternativa_errada1").value = "";
+      document.getElementById("alternativa_errada2").value = "";
+      document.getElementById("alternativa_errada3").value = "";
+      document.getElementById("alternativa_errada4").value = "";
+
+      previewConfirmado = false;
+
+      document.getElementById("previewQuestaoArea").classList.add("hidden");
+      document.getElementById("previewEnunciado").innerHTML = "";
+      document.getElementById("previewImagemQuestaoImg").src = "";
+      document.getElementById("previewImagemQuestao").classList.add("hidden");
+
+      document.getElementById("previewAltA").innerHTML = "";
+      document.getElementById("previewAltB").innerHTML = "";
+      document.getElementById("previewAltC").innerHTML = "";
+      document.getElementById("previewAltD").innerHTML = "";
+      document.getElementById("previewAltE").innerHTML = "";
+    };
+
+    window.listarQuestoes = async function() {
+      const tabela = document.getElementById("tabelaQuestoes");
+      const contador = document.getElementById("contadorQuestoes");
+
+      tabela.innerHTML = "<tr><td colspan='8'>Carregando...</td></tr>";
+
+      const busca = document.getElementById("busca").value.trim();
+      const filtroNivel = document.getElementById("filtroNivel").value;
+      const filtroDificuldade = document.getElementById("filtroDificuldade").value;
+      const filtroSerie = document.getElementById("filtroSerie").value;
+
+      let query = supabase
+        .from("quest")
+        .select(`
+          id,
+          pergunta,
+          imagem_url,
+          serie,
+          nivel,
+          dificuldade,
+          alternativa_correta,
+          alternativa_errada1,
+          alternativa_errada2,
+          alternativa_errada3,
+          alternativa_errada4
+        `)
+        .order("id", { ascending: false })
+        .limit(300);
+
+      if (busca) {
+        query = query.ilike("pergunta", `%${busca}%`);
+      }
+
+      if (filtroNivel) {
+        query = query.eq("nivel", filtroNivel);
+      }
+
+      if (filtroDificuldade) {
+        query = query.eq("dificuldade", filtroDificuldade);
+      }
+
+      if (filtroSerie) {
+        query = query.eq("serie", filtroSerie);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        tabela.innerHTML = `<tr><td colspan="8">Erro: ${escaparHtml(error.message)}</td></tr>`;
+        contador.innerText = "Erro ao carregar";
+        return;
+      }
+
+      questoesCarregadas = data || [];
+
+      contador.innerText = `${questoesCarregadas.length} questões`;
+
+      if (!questoesCarregadas || questoesCarregadas.length === 0) {
+        tabela.innerHTML = "<tr><td colspan='8'>Nenhuma questão encontrada.</td></tr>";
+        return;
+      }
+
+      tabela.innerHTML = "";
+
+      for (const q of questoesCarregadas) {
+        const imagemHtml = q.imagem_url
+          ? `<img class="imagem-miniatura" src="${escaparHtml(q.imagem_url)}" alt="Imagem da questão" />`
+          : "Sem imagem";
+
+        const tr = document.createElement("tr");
+
+        tr.innerHTML = `
+          <td>${q.id ?? ""}</td>
+          <td>${imagemHtml}</td>
+          <td>${escaparHtml(q.pergunta ?? "")}</td>
+          <td>${escaparHtml(q.serie ?? "")}</td>
+          <td><span class="tag">${escaparHtml(nomeNivel(q.nivel ?? ""))}</span></td>
+          <td><span class="tag">${escaparHtml(nomeDificuldade(q.dificuldade ?? ""))}</span></td>
+          <td>${escaparHtml(q.alternativa_correta ?? "")}</td>
+          <td>
+            <div class="acoes">
+              <button class="warning" onclick="editarQuestao(${q.id})">Editar</button>
+              <button class="danger" onclick="excluirQuestao(${q.id})">Excluir</button>
+            </div>
+          </td>
+        `;
+
+        tabela.appendChild(tr);
+      }
+    };
+
+    window.nomeNivel = function(nivel) {
+      if (nivel === "nivel_1") return "Nível I";
+      if (nivel === "nivel_2") return "Nível II";
+      if (nivel === "nivel_3") return "Nível III";
+      if (nivel === "nivel_4") return "Nível IV";
+      return nivel || "Sem nível";
+    };
+
+    window.nomeDificuldade = function(dificuldade) {
+      if (dificuldade === "facil") return "Fácil";
+      if (dificuldade === "medio") return "Médio";
+      if (dificuldade === "dificil") return "Difícil";
+      return dificuldade || "Sem dificuldade";
+    };
+
+    window.editarQuestao = function(id) {
+      const q = questoesCarregadas.find(item => Number(item.id) === Number(id));
+
+      if (!q) {
+        mostrarStatus("formStatus", "Questão não encontrada para edição.", "erro");
+        return;
+      }
+
+      document.getElementById("tituloFormulario").innerText = "Editar Questão";
+      document.getElementById("btnSalvar").innerText = "Salvar alterações";
+
+      document.getElementById("questaoIdEdicao").value = q.id;
+      document.getElementById("pergunta").value = q.pergunta || "";
+      document.getElementById("imagem_url").value = q.imagem_url || "";
+      document.getElementById("arquivoImagem").value = "";
+
+      if (q.imagem_url) {
+        document.getElementById("previewImagem").src = q.imagem_url;
+        document.getElementById("previewImagemArea").classList.remove("hidden");
+      } else {
+        document.getElementById("previewImagem").src = "";
+        document.getElementById("previewImagemArea").classList.add("hidden");
+      }
+
+      document.getElementById("serie").value = q.serie || "4 e 5 ano";
+      document.getElementById("nivel").value = q.nivel || "nivel_1";
+      document.getElementById("dificuldade").value = q.dificuldade || "facil";
+
+      document.getElementById("alternativa_correta").value = q.alternativa_correta || "";
+      document.getElementById("alternativa_errada1").value = q.alternativa_errada1 || "";
+      document.getElementById("alternativa_errada2").value = q.alternativa_errada2 || "";
+      document.getElementById("alternativa_errada3").value = q.alternativa_errada3 || "";
+      document.getElementById("alternativa_errada4").value = q.alternativa_errada4 || "";
+
+      previewConfirmado = false;
+      document.getElementById("previewQuestaoArea").classList.add("hidden");
+
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth"
+      });
+
+      mostrarStatus(
+        "formStatus",
+        "Editando questão ID " + q.id + ". Gere a pré-visualização antes de salvar.",
+        "aviso"
+      );
+    };
+
+    window.excluirQuestao = async function(id) {
+      const confirmar = confirm(
+        "Tem certeza que deseja excluir a questão ID " + id + "?\n\nEssa ação não poderá ser desfeita."
+      );
+
+      if (!confirmar) return;
+
+      const { error } = await supabase
+        .from("quest")
+        .delete()
+        .eq("id", id);
+
+      if (error) {
+        mostrarStatus(
+          "formStatus",
+          "Erro ao excluir questão: " + error.message,
+          "erro"
+        );
+        return;
+      }
+
+      mostrarStatus("formStatus", "Questão excluída com sucesso.", "ok");
+
+      await listarQuestoes();
+    };
+
+    async function iniciar() {
+      atualizarNivelAutomatico();
+      registrarCamposLatex();
+
+      const { data } = await supabase.auth.getUser();
+
+      if (data.user) {
+        const admin = await verificarAdminRetorno(data.user);
+
+        if (admin) {
+          abrirPainel(data.user);
+        }
+      }
+    }
+
+    iniciar();
+  </script>
+</body>
+</html>
