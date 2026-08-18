@@ -19,37 +19,37 @@ class LevelService {
     '1º ano do Ensino Médio',
     '2º ano do Ensino Médio',
     '3º ano do Ensino Médio',
+    'Graduado',
+    'Pós-graduado',
   ];
 
-  static String nivelPorSerieEscolar(String? serieEscolar) {
-    final serie = serieEscolar?.toLowerCase().trim() ?? '';
+ static String nivelPorSerieEscolar(String? serieEscolar) {
+  if (serieEscolar == '4º ano do Ensino Fundamental' ||
+      serieEscolar == '5º ano do Ensino Fundamental') {
+    return nivel1;
+  }
 
-    if (serie.contains('4º ano') ||
-        serie.contains('4° ano') ||
-        serie.contains('5º ano') ||
-        serie.contains('5° ano') ||
-        serie.contains('4 e 5')) {
-      return nivel1;
-    }
+  if (serieEscolar == '6º ano do Ensino Fundamental' ||
+      serieEscolar == '7º ano do Ensino Fundamental') {
+    return nivel2;
+  }
 
-    if (serie.contains('6º ano') ||
-        serie.contains('6° ano') ||
-        serie.contains('7º ano') ||
-        serie.contains('7° ano') ||
-        serie.contains('6 e 7')) {
-      return nivel2;
-    }
+  if (serieEscolar == '8º ano do Ensino Fundamental' ||
+      serieEscolar == '9º ano do Ensino Fundamental') {
+    return nivel3;
+  }
 
-    if (serie.contains('8º ano') ||
-        serie.contains('8° ano') ||
-        serie.contains('9º ano') ||
-        serie.contains('9° ano') ||
-        serie.contains('8 e 9')) {
-      return nivel3;
-    }
-
+  if (serieEscolar == '1º ano do Ensino Médio' ||
+      serieEscolar == '2º ano do Ensino Médio' ||
+      serieEscolar == '3º ano do Ensino Médio' ||
+      serieEscolar == 'Graduado' ||
+      serieEscolar == 'Pós-graduado') {
     return nivel4;
   }
+
+  return nivel1;
+}
+   
 
   static String categoriaPorNivel(String nivel) {
     switch (nivel) {

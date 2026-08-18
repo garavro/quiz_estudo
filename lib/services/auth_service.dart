@@ -139,6 +139,27 @@ class AuthService {
         .eq('id', usuario.id);
   }
 
+  Future<void> excluirContaAtual() async {
+  final usuario = _supabase.auth.currentUser;
+
+  if (usuario == null) {
+    throw Exception('Usuário não autenticado.');
+  }
+
+  final response = await _supabase.functions.invoke(
+    'excluir-conta',
+    body: {},
+  );
+
+  if (response.status != 200) {
+    throw Exception(
+      'Não foi possível excluir a conta. Tente novamente.',
+    );
+  }
+
+  await _supabase.auth.signOut();
+}
+
   Future<void> atualizarNivelETitulo({
     required String nivelAtual,
     required String tituloAtual,

@@ -41,6 +41,8 @@ class _MenuScreenState extends State<MenuScreen> {
     '1º ano do Ensino Médio',
     '2º ano do Ensino Médio',
     '3º ano do Ensino Médio',
+    'Graduado',
+    'Pós-graduado',
   ];
 
   @override
@@ -48,6 +50,125 @@ void initState() {
   super.initState();
   _carregarPreferencias();
   _verificarAvisoAntiCheat();
+}
+
+Future<void> _confirmarExclusaoConta() async {
+  final confirmarController = TextEditingController();
+
+  final confirmou = await showDialog<bool>(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) {
+      return AlertDialog(
+        title: const Text('Excluir conta'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Esta ação excluirá sua conta, seu perfil, sua pontuação e seu progresso no aplicativo. '
+              'Essa ação não poderá ser desfeita.\n\n'
+              'Para confirmar, digite EXCLUIR abaixo:',
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: confirmarController,
+              decoration: const InputDecoration(
+                labelText: 'Digite EXCLUIR',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop(false);
+            },
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () {
+              final texto = confirmarController.text.trim();
+
+              if (texto != 'EXCLUIR') {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Digite EXCLUIR para confirmar.'),
+                    backgroundColor: Colors.redAccent,
+                  ),
+                );
+                return;
+              }
+
+              Navigator.of(context).pop(true);
+            },
+            child: const Text('Excluir conta'),
+          ),
+        ],
+      );
+    },
+  );
+
+  confirmarController.dispose();
+
+  if (confirmou != true) return;
+
+  if (!mounted) return;
+
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (_) {
+      return const AlertDialog(
+        content: Row(
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(width: 16),
+            Expanded(
+              child: Text('Excluindo conta...'),
+            ),
+          ],
+        ),
+      );
+    },
+  );
+
+  try {
+    await _authService.excluirContaAtual();
+
+    if (!mounted) return;
+
+    Navigator.of(context).pop();
+
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder: (_) => const LoginScreen(),
+      ),
+      (route) => false,
+    );
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Conta excluída com sucesso.'),
+        backgroundColor: Colors.green,
+      ),
+    );
+  } catch (e) {
+    if (!mounted) return;
+
+    Navigator.of(context).pop();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Erro ao excluir conta: $e'),
+        backgroundColor: Colors.redAccent,
+      ),
+    );
+  }
 }
 
   Future<void> _verificarAvisoAntiCheat() async {
@@ -276,7 +397,7 @@ void initState() {
                   ),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<String>(
-                    value: serieSelecionada,
+  initialValue: serieSelecionada,
                     isExpanded: true,
                     decoration: InputDecoration(
                       filled: true,
@@ -407,82 +528,117 @@ void initState() {
     }
   }
 
-  Widget _botaoPerfil() {
-    return PopupMenuButton<int>(
-      offset: const Offset(0, 55),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(15),
-      ),
-      icon: CircleAvatar(
-        radius: 26,
-        backgroundColor: Colors.blueAccent,
-        backgroundImage: _imagemPerfil(),
-        child: _fotoBase64 == null
-            ? const Icon(
-                Icons.person,
-                color: Colors.white,
-                size: 28,
-              )
-            : null,
-      ),
-      onSelected: (value) {
-        switch (value) {
-          case 1:
-            _alternarTema();
-            break;
-          case 2:
-            _mostrarOpcoesFoto();
-            break;
-          case 3:
-            _mostrarDialogAlterarSerie();
-            break;
-          case 4:
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Painel de ajuda em breve!'),
-              ),
-            );
-            break;
-          case 5:
-            _sair();
-            break;
-        }
-      },
-      itemBuilder: (_) => [
-        const PopupMenuItem(
-          value: 1,
-          child: Text('🌓 Alternar Tema'),
-        ),
-        const PopupMenuItem(
-          value: 2,
-          child: Text('📷 Mudar Foto'),
-        ),
-        PopupMenuItem(
-          value: 3,
-          child: Text(
-            _serieEscolarAtual == null
-                ? '🎓 Alterar Série'
-                : '🎓 Série: $_serieEscolarAtual',
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-        const PopupMenuItem(
-          value: 4,
-          child: Text('❓ Ajuda'),
-        ),
-        const PopupMenuItem(
-          value: 5,
-          child: Text(
-            '🚪 Sair',
-            style: TextStyle(
-              color: Colors.red,
-              fontWeight: FontWeight.bold,
+Widget _botaoPerfil() {
+  return PopupMenuButton<int>(
+    tooltip: 'Menu do perfil',
+     constraints: const BoxConstraints(
+      minWidth: 260,
+      maxWidth: 300,
+    ),
+  child: CircleAvatar(
+    radius: 24,
+    backgroundColor: Colors.blue.shade100,
+    backgroundImage: _imagemPerfil(),
+    child: _imagemPerfil() == null
+        ? const Icon(
+            Icons.person,
+            color: Colors.blue,
+          )
+        : null,
+  ),
+    onSelected: (value) {
+      switch (value) {
+        case 1:
+          _alternarTema();
+          break;
+
+        case 2:
+        _mostrarDialogAlterarSerie();
+  break;
+
+        case 3:
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const PlacarScreen(),
             ),
-          ),
-        ),
-      ],
-    );
-  }
+          );
+          break;
+
+        case 4:
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Email de suporte:olimpiadamatematica393@gmail.com'),
+            ),
+          );
+          break;
+
+        case 5:
+  _sair();
+  break;	
+
+        case 6:
+          _confirmarExclusaoConta();
+          break;
+
+	case 7:
+	_mostrarOpcoesFoto();
+          break;  
+
+      }
+    },
+    itemBuilder: (context) => <PopupMenuEntry<int>>[
+      _itemMenu(
+        valor: 1,
+        icone: Icons.brightness_6_outlined,
+        texto: 'Tema',
+      ),
+
+      _itemMenu(
+        valor: 2,
+        icone: Icons.school,
+        texto: 'Alterar série',
+      ),
+
+      _itemMenu(
+        valor: 3,
+        icone: Icons.emoji_events,
+        texto: 'Placar',
+      ),
+
+      _itemMenu(
+        valor: 4,
+        icone: Icons.help_outline,
+        texto: 'Ajuda',
+      ),
+
+      const PopupMenuDivider(),
+
+      _itemMenu(
+        valor: 5,
+        icone: Icons.logout,
+        texto: 'Sair',
+        cor: Colors.red,
+      ),
+
+      const PopupMenuDivider(),
+
+      _itemMenu(
+        valor: 6,
+        icone: Icons.delete_forever,
+        texto: 'Excluir minha conta',
+        cor: Colors.red,
+      ),
+
+      _itemMenu(
+        valor: 7,
+        icone: Icons.photo,
+        texto: 'Alterar foto',
+        cor: Colors.blueAccent,
+      ),
+    ],
+  );
+}
 
   Widget _infoAluno() {
     final nivelTexto = _nivelAtual == null
@@ -512,6 +668,41 @@ void initState() {
       ],
     );
   }
+
+PopupMenuItem<int> _itemMenu({
+  required int valor,
+  required IconData icone,
+  required String texto,
+  Color? cor,
+}) {
+  return PopupMenuItem<int>(
+    value: valor,
+    child: SizedBox(
+      width: 240,
+      child: Row(
+        children: [
+          Icon(
+            icone,
+            size: 20,
+            color: cor,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              texto,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: cor,
+                fontWeight: cor == null ? FontWeight.normal : FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
 
   Widget _conteudoCentral(BuildContext context) {
     final larguraBotao =

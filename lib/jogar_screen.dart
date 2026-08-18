@@ -59,7 +59,10 @@ class _JogarScreenState extends State<JogarScreen>
 
   static const int _quantidadeParaBonusSequencia = 3;
 
-  static const String _baseImagemUrl =
+  static const String _bucketQuestoesImagensUrl =
+      'https://ojkkstibwifhbplakjfw.supabase.co/storage/v1/object/public/questoes-imagens/';
+
+  static const String _bucketImagensAntigasUrl =
       'https://ojkkstibwifhbplakjfw.supabase.co/storage/v1/object/public/images/';
 
   @override
@@ -76,6 +79,35 @@ class _JogarScreenState extends State<JogarScreen>
     }
   }
 
+  String? _resolverImagemUrl(dynamic valor) {
+    if (valor == null) return null;
+
+    final texto = valor.toString().trim();
+    final textoMinusculo = texto.toLowerCase();
+
+    if (texto.isEmpty || textoMinusculo == 'null' || textoMinusculo == 'empty') {
+      return null;
+    }
+
+    // As questões novas cadastradas pelo painel já salvam a URL completa.
+    if (texto.startsWith('http://') || texto.startsWith('https://')) {
+      return texto;
+    }
+
+    // Aceita caminho completo dentro do bucket novo.
+    if (texto.startsWith('questoes-imagens/')) {
+      return 'https://ojkkstibwifhbplakjfw.supabase.co/storage/v1/object/public/$texto';
+    }
+
+    // Aceita caminho relativo do bucket novo, exemplo: nivel_1/facil/imagem.png.
+    if (texto.startsWith('nivel_')) {
+      return '$_bucketQuestoesImagensUrl$texto';
+    }
+
+    // Mantém compatibilidade com questões antigas que salvaram somente o nome do arquivo.
+    return '$_bucketImagensAntigasUrl$texto';
+  }
+
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
@@ -84,18 +116,17 @@ class _JogarScreenState extends State<JogarScreen>
   }
 
   @override
-  @override
-void didChangeAppLifecycleState(AppLifecycleState state) {
-  super.didChangeAppLifecycleState(state);
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
 
-  if (_finalizando || _antiColaAcionado) return;
+    if (_finalizando || _antiColaAcionado) return;
 
-  if (state == AppLifecycleState.paused ||
-      state == AppLifecycleState.inactive ||
-      state == AppLifecycleState.hidden) {
-    _encerrarPorSaidaDoApp();
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.hidden) {
+      _encerrarPorSaidaDoApp();
+    }
   }
-}
 
   int get _multiplicadorDificuldade {
     return ScoreService.multiplicadorPorDificuldade(widget.dificuldade);
@@ -315,11 +346,11 @@ void didChangeAppLifecycleState(AppLifecycleState state) {
   }
 
   Widget _imagemQuestao() {
-    if (_imagemUrl.trim().isEmpty) {
+    final urlCompleta = _resolverImagemUrl(_imagemUrl);
+
+    if (urlCompleta == null) {
       return const SizedBox.shrink();
     }
-
-    final urlCompleta = '$_baseImagemUrl$_imagemUrl';
 
     return Column(
       children: [
@@ -346,13 +377,37 @@ void didChangeAppLifecycleState(AppLifecycleState state) {
                 );
               },
               errorBuilder: (context, error, stackTrace) {
-                return const SizedBox(
+                debugPrint('Erro ao carregar imagem da questão: $error');
+                debugPrint('URL da imagem: $urlCompleta');
+
+                return Container(
                   height: 180,
-                  child: Center(
-                    child: Icon(
-                      Icons.broken_image,
-                      size: 80,
-                      color: Colors.grey,
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.red.shade200),
+                  ),
+                  child: const Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.broken_image,
+                          size: 56,
+                          color: Colors.redAccent,
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          'Não foi possível carregar a imagem da questão.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.redAccent,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 );

@@ -391,6 +391,8 @@ class _CadastroScreenState extends State<CadastroScreen> {
     '1º ano do Ensino Médio',
     '2º ano do Ensino Médio',
     '3º ano do Ensino Médio',
+    'Graduado',
+    'Pós-graduado',
   ];
 
   String? _serieEscolarSelecionada;

@@ -18,6 +18,9 @@ migrate_working_dir/
 *.iws
 .idea/
 
+android/key.properties
+*.jks
+*.keystore
 # The .vscode folder contains launch configuration and tasks you configure in
 # VS Code which you may wish to be included in version control, so this line
 # is commented out by default.
@@ -47,3 +50,14 @@ backups/
 backups/
 node_modules/
 backups/
+
+android/key.properties
+*.jks
+*.keystore
+
+android/key.properties
+*.jks
+*.keystore
+backups/
+build/
+.dart_tool/
