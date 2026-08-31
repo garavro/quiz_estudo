@@ -104674,7 +104674,7 @@ BC(a,b,c){return this.BD(null,a,b,c)},
 afU(a){var s=this,r=null,q=A.bP(a,r,t.w).w.a.a>500?260:220,p=A.aUA("assets/titulo.png",new A.aEZ(),B.ow,160,r),o=s.r,n=o==null?"N\xedvel n\xe3o definido":A.TF(o),m=s.w
 if(m==null)m="Iniciante"
 o=t.p
-return A.ey(A.qD(A.dt(A.d([p,B.dm,A.dt(A.d([A.bW(n,r,r,r,B.aTC,r,r),B.nb,A.bW("T\xedtulo: "+m,r,r,r,B.a0g,r,r)],o),B.Q,B.O,B.av),B.aLn,A.mP(62,s.x,B.cd,B.as6,q,s.ganc(),"JOGAR"),B.dm,A.mP(62,!1,B.cd,B.A2,q,new A.aF_(a),"PLACAR")],o),B.Q,B.jR,B.av),B.aq_),r,r)},
+return A.ey(A.qD(A.dt(A.d([p,B.dm,A.dt(A.d([A.bW(n,r,r,r,B.aTC,r,r),B.nb,A.bW(" "+m,r,r,r,B.a0g,r,r)],o),B.Q,B.O,B.av),B.aLn,A.mP(62,s.x,B.cd,B.as6,q,s.ganc(),"JOGAR"),B.dm,A.mP(62,!1,B.cd,B.A2,q,new A.aF_(a),"PLACAR")],o),B.Q,B.jR,B.av),B.aq_),r,r)},
 api(){var s=null,r=this.y
 if(!r&&!this.z)return B.aT
 return A.aPN(0,A.da(s,A.ey(A.CT(new A.bv(B.apY,A.dt(A.d([B.lh,B.tb,A.bW(r?"Saindo da conta...":"Atualizando s\xe9rie...",s,s,s,s,s,s)],t.p),B.Q,B.O,B.aZ),s),s,s,s),s,s),B.w,B.yC,s,s,s,s,s,s,s,s,s))},
