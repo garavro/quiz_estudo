@@ -659,12 +659,12 @@ Widget _botaoPerfil() {
         ),
         const SizedBox(height: 4),
         Text(
-          'Título: $tituloTexto',
-          style: const TextStyle(
+         ' $tituloTexto',
+         style: const TextStyle(
             fontSize: 14,
             color: Colors.grey,
-          ),
-        ),
+         ),
+       ),
       ],
     );
   }
