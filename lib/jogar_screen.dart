@@ -54,6 +54,10 @@ class _JogarScreenState extends State<JogarScreen>
   bool _processandoResposta = false;
   bool _finalizando = false;
   bool _antiColaAcionado = false;
+  
+  // Variáveis do rascunho
+  bool _modoRascunho = false;
+  List<Offset?> _pontos = [];
 
   final List<Map<String, dynamic>> _historicoRespostas = [];
 
@@ -89,22 +93,18 @@ class _JogarScreenState extends State<JogarScreen>
       return null;
     }
 
-    // As questões novas cadastradas pelo painel já salvam a URL completa.
     if (texto.startsWith('http://') || texto.startsWith('https://')) {
       return texto;
     }
 
-    // Aceita caminho completo dentro do bucket novo.
     if (texto.startsWith('questoes-imagens/')) {
       return 'https://ojkkstibwifhbplakjfw.supabase.co/storage/v1/object/public/$texto';
     }
 
-    // Aceita caminho relativo do bucket novo, exemplo: nivel_1/facil/imagem.png.
     if (texto.startsWith('nivel_')) {
       return '$_bucketQuestoesImagensUrl$texto';
     }
 
-    // Mantém compatibilidade com questões antigas que salvaram somente o nome do arquivo.
     return '$_bucketImagensAntigasUrl$texto';
   }
 
@@ -241,6 +241,10 @@ class _JogarScreenState extends State<JogarScreen>
         _index++;
         _prepararQuestao();
         _processandoResposta = false;
+        
+        // Limpa o rascunho e desativa ao passar de questão
+        _pontos.clear();
+        _modoRascunho = false;
       });
     } else {
       setState(() {
@@ -253,25 +257,25 @@ class _JogarScreenState extends State<JogarScreen>
   }
 
   Future<void> _encerrarPorSaidaDoApp() async {
-  if (_antiColaAcionado || _finalizando) return;
+    if (_antiColaAcionado || _finalizando) return;
 
-  _antiColaAcionado = true;
+    _antiColaAcionado = true;
 
-  if (mounted) {
-    setState(() {
-      _finalizando = true;
-    });
+    if (mounted) {
+      setState(() {
+        _finalizando = true;
+      });
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('anti_cheat_acionado', true);
+
+    await AntiCheatService.desativarProtecao();
+
+    if (!mounted) return;
+
+    Navigator.of(context).popUntil((route) => route.isFirst);
   }
-
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setBool('anti_cheat_acionado', true);
-
-  await AntiCheatService.desativarProtecao();
-
-  if (!mounted) return;
-
-  Navigator.of(context).popUntil((route) => route.isFirst);
-}
 
   Future<void> _mostrarFimDeJogo() async {
     String nivelFinal = widget.nivelAtual;
@@ -548,63 +552,138 @@ class _JogarScreenState extends State<JogarScreen>
           title: Text('${LevelService.nomeNivel(widget.nivelAtual)} - ${_nomeDificuldade()}'),
           centerTitle: true,
           automaticallyImplyLeading: !_finalizando,
+          actions: [
+            IconButton(
+              icon: Icon(
+                _modoRascunho ? Icons.edit_off : Icons.edit,
+                color: _modoRascunho ? Colors.orange : null,
+              ),
+              tooltip: 'Rascunho',
+              onPressed: () {
+                setState(() {
+                  _modoRascunho = !_modoRascunho;
+                  if (!_modoRascunho) {
+                    _pontos.clear(); // Apaga o rascunho ao desativar
+                  }
+                });
+              },
+            ),
+          ],
         ),
-        body: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(
-                  maxWidth: 700,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _barraProgresso(),
-                    const SizedBox(height: 25),
-                    Card(
-                      elevation: 2,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(18),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: MathText(
-                          _perguntaAtual,
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          corTexto: Theme.of(context).colorScheme.onSurface,
-                          textAlign: TextAlign.justify,
-                        ),
-                      ),
+        body: Stack(
+          children: [
+            SafeArea(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      maxWidth: 700,
                     ),
-                    _imagemQuestao(),
-                    const SizedBox(height: 5),
-                    ..._alternativas.map(_botaoAlternativa),
-                    const SizedBox(height: 12),
-                    AppButton(
-                      texto: 'CONFIRMAR RESPOSTA',
-                      icone: Icons.check_circle_outline,
-                      carregando: _processandoResposta,
-                      onPressed: _respostaSelecionada == null
-                          ? null
-                          : _confirmarResposta,
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Sequência atual: $_sequenciaAtual | Bônus: +$_bonusSequencia',
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Colors.grey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _barraProgresso(),
+                        const SizedBox(height: 25),
+                        Card(
+                          elevation: 2,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
                           ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(20),
+                            child: MathText(
+                              _perguntaAtual,
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              corTexto: Theme.of(context).colorScheme.onSurface,
+                              textAlign: TextAlign.justify,
+                            ),
+                          ),
+                        ),
+                        _imagemQuestao(),
+                        const SizedBox(height: 5),
+                        ..._alternativas.map(_botaoAlternativa),
+                        const SizedBox(height: 12),
+                        AppButton(
+                          texto: 'CONFIRMAR RESPOSTA',
+                          icone: Icons.check_circle_outline,
+                          carregando: _processandoResposta,
+                          onPressed: _respostaSelecionada == null
+                              ? null
+                              : _confirmarResposta,
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Sequência atual: $_sequenciaAtual | Bônus: +$_bonusSequencia',
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Colors.grey,
+                              ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),
-          ),
+            
+            // Camada do Rascunho
+            if (_modoRascunho)
+              Positioned.fill(
+                child: GestureDetector(
+                  onPanStart: (details) {
+                    setState(() {
+                      _pontos.add(details.localPosition);
+                    });
+                  },
+                  onPanUpdate: (details) {
+                    setState(() {
+                      _pontos.add(details.localPosition);
+                    });
+                  },
+                  onPanEnd: (details) {
+                    setState(() {
+                      _pontos.add(null);
+                    });
+                  },
+                  child: Container(
+                    color: Colors.transparent, // Necessário para detectar toques
+                    child: CustomPaint(
+                      painter: RascunhoPainter(_pontos),
+                    ),
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );
+  }
+}
+
+// Classe que desenha o rascunho, colocada FORA da classe _JogarScreenState
+class RascunhoPainter extends CustomPainter {
+  final List<Offset?> pontos;
+
+  RascunhoPainter(this.pontos);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.blueAccent
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = 3.0;
+
+    for (int i = 0; i < pontos.length - 1; i++) {
+      if (pontos[i] != null && pontos[i + 1] != null) {
+        canvas.drawLine(pontos[i]!, pontos[i + 1]!, paint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant RascunhoPainter oldDelegate) {
+    return true; 
   }
 }
