@@ -82,3 +82,10 @@ android/key.properties
 backups/
 build/
 .dart_tool/
+
+android/key.properties
+*.jks
+*.keystore
+backups/
+build/
+.dart_tool/

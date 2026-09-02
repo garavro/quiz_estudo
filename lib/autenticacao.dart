@@ -308,7 +308,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 6),
                   const Text(
-                    'Faça login para continuar',
+                    'Faça login para continuar Ou cadastre-se para criar uma nova conta.',
                     style: TextStyle(fontSize: 14, color: Colors.grey),
                   ),
                   const SizedBox(height: 28),

@@ -1,3 +1,4 @@
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -26,6 +27,9 @@ class _MenuScreenState extends State<MenuScreen> {
   String? _serieEscolarAtual;
   String? _nivelAtual;
   String? _tituloAtual;
+  String? _apelidoAtual;
+  String? _emailAtual;
+  String? _pontuacaoAtual;
 
   bool _carregandoJogar = false;
   bool _carregandoLogout = false;
@@ -196,6 +200,77 @@ Future<void> _confirmarExclusaoConta() async {
   });
 }
 
+void _mostrarDialogAlterarApelido() {
+    final controller = TextEditingController(text: _apelidoAtual);
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Alterar Apelido'),
+          content: TextField(
+            controller: controller,
+            decoration: const InputDecoration(
+              labelText: 'Novo Apelido',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final novoApelido = controller.text.trim();
+                if (novoApelido.isNotEmpty) {
+                  Navigator.pop(dialogContext);
+                  await _alterarApelido(novoApelido);
+                }
+              },
+              child: const Text('Salvar'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _alterarApelido(String novoApelido) async {
+    try {
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      
+      if (userId != null) {
+        // ATENÇÃO: Ajuste 'perfis' para o nome correto da sua tabela no Supabase
+        await Supabase.instance.client
+            .from('perfis') 
+            .update({'nome_completo': novoApelido})
+            .eq('id', userId);
+
+        if (!mounted) return;
+
+        setState(() {
+          _apelidoAtual = novoApelido;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Apelido atualizado com sucesso!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Erro ao atualizar apelido.'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
+  }
+
   Future<void> _carregarPreferencias() async {
     final prefs = await SharedPreferences.getInstance();
 
@@ -214,6 +289,13 @@ Future<void> _confirmarExclusaoConta() async {
     final nivel = perfil?['nivel_atual']?.toString();
     final titulo = perfil?['titulo_atual']?.toString();
 
+    // Captura o apelido ou nome do banco de dados, e o e-mail da sessão atual
+  final apelido = perfil?['nome_completo']?.toString() ?? 'Usuário';
+  final email = Supabase.instance.client.auth.currentUser?.email;
+
+// Captura a pontuação (ajuste a chave 'pontuacao' conforme o nome da coluna no seu banco de dados)
+    final pontos = perfil?['pontuacao']?.toString() ?? '0';
+
     themeNotifier.value = temaEscuro ? ThemeMode.dark : ThemeMode.light;
 
     if (!mounted) return;
@@ -223,6 +305,9 @@ Future<void> _confirmarExclusaoConta() async {
       _serieEscolarAtual = serie;
       _nivelAtual = nivel;
       _tituloAtual = titulo;
+      _apelidoAtual = apelido;
+      _emailAtual = email;
+      _pontuacaoAtual = pontos;
     });
   }
 
@@ -587,7 +672,52 @@ Widget _botaoPerfil() {
 
       }
     },
-    itemBuilder: (context) => <PopupMenuEntry<int>>[
+   itemBuilder: (context) => <PopupMenuEntry<int>>[
+      // Cabeçalho com Apelido Editável e E-mail
+      PopupMenuItem<int>(
+        enabled: false, 
+        child: SizedBox(
+          width: 240,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Flexible(
+                    child: Text(
+                      _apelidoAtual ?? 'Apelido',
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.edit, size: 18, color: Colors.blueAccent),
+                    tooltip: 'Alterar apelido',
+                    onPressed: () {
+                      Navigator.pop(context); // Fecha o menu popup
+                      _mostrarDialogAlterarApelido();
+                    },
+                  ),
+                ],
+              ),
+              Text(
+                _emailAtual ?? 'email@cadastrado.com',
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Divider(height: 1),
+            ],
+          ),
+        ),
+      ),
+
       _itemMenu(
         valor: 1,
         icone: Icons.brightness_6_outlined,
@@ -597,13 +727,14 @@ Widget _botaoPerfil() {
       _itemMenu(
         valor: 2,
         icone: Icons.school,
-        texto: 'Alterar série',
+        texto: 'Ano escolar',
       ),
 
+      // Exibindo a pontuação junto ao texto do Placar
       _itemMenu(
         valor: 3,
         icone: Icons.emoji_events,
-        texto: 'Placar',
+        texto: 'Placar: ${_pontuacaoAtual ?? 0} pts',
       ),
 
       _itemMenu(
