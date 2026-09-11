@@ -54,10 +54,12 @@ class _JogarScreenState extends State<JogarScreen>
   bool _processandoResposta = false;
   bool _finalizando = false;
   bool _antiColaAcionado = false;
-  
-  // Variáveis do rascunho
+
+  // Variáveis do Rascunho
   bool _modoRascunho = false;
-  List<Offset?> _pontos = [];
+  List<PontoRascunho> _pontos = [];
+  Color _corRascunhoAtual = Colors.blueAccent;
+  bool _modoBorracha = false;
 
   final List<Map<String, dynamic>> _historicoRespostas = [];
 
@@ -166,8 +168,7 @@ class _JogarScreenState extends State<JogarScreen>
 
     final q = _questoes[_index];
 
-    _perguntaAtual = _lerTexto(q['pergunta']);
-    _imagemUrl = _lerTexto(q['imagem_url']);
+_perguntaAtual = _lerTexto(q['pergunta']).replaceAll(RegExp(r'\s+'), ' ').trim();    _imagemUrl = _lerTexto(q['imagem_url']);
     _respostaSelecionada = null;
 
     _alternativas = [
@@ -241,10 +242,11 @@ class _JogarScreenState extends State<JogarScreen>
         _index++;
         _prepararQuestao();
         _processandoResposta = false;
-        
-        // Limpa o rascunho e desativa ao passar de questão
+
+        // Limpa e desativa o rascunho ao passar de questão
         _pontos.clear();
         _modoRascunho = false;
+        _modoBorracha = false;
       });
     } else {
       setState(() {
@@ -349,6 +351,92 @@ class _JogarScreenState extends State<JogarScreen>
     );
   }
 
+  // ==== WIDGETS DO RASCUNHO ==== //
+
+  Widget _botaoCor(Color cor) {
+    final selecionado = _corRascunhoAtual == cor && !_modoBorracha;
+    return GestureDetector(
+      onTap: () => setState(() {
+        _corRascunhoAtual = cor;
+        _modoBorracha = false; // Desativa a borracha ao escolher cor
+      }),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 6),
+        width: 28,
+        height: 28,
+        decoration: BoxDecoration(
+          color: cor,
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: selecionado ? Colors.orange : Colors.transparent,
+            width: selecionado ? 3 : 0,
+          ),
+          boxShadow: [
+            if (selecionado)
+              const BoxShadow(
+                color: Colors.black26,
+                blurRadius: 4,
+                offset: Offset(0, 2),
+              )
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _barraFerramentasRascunho() {
+    return Positioned(
+      top: 16,
+      left: 0,
+      right: 0,
+      child: Center(
+        child: Material(
+          elevation: 4,
+          borderRadius: BorderRadius.circular(30),
+          color: Theme.of(context).colorScheme.surface,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _botaoCor(Colors.black),
+                _botaoCor(Colors.blueAccent),
+                _botaoCor(Colors.redAccent),
+                _botaoCor(Colors.green),
+                Container(
+                  width: 1,
+                  height: 24,
+                  color: Colors.grey.shade400,
+                  margin: const EdgeInsets.symmetric(horizontal: 12),
+                ),
+                IconButton(
+                  icon: Icon(
+                    Icons.cleaning_services_rounded,
+                    color: _modoBorracha ? Colors.orange : Colors.grey.shade600,
+                  ),
+                  onPressed: () => setState(() => _modoBorracha = true),
+                  tooltip: 'Borracha',
+                  constraints: const BoxConstraints(),
+                  padding: EdgeInsets.zero,
+                ),
+                const SizedBox(width: 16),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                  onPressed: () => setState(() => _pontos.clear()),
+                  tooltip: 'Limpar tela',
+                  constraints: const BoxConstraints(),
+                  padding: EdgeInsets.zero,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ============================= //
+
   Widget _imagemQuestao() {
     final urlCompleta = _resolverImagemUrl(_imagemUrl);
 
@@ -381,9 +469,6 @@ class _JogarScreenState extends State<JogarScreen>
                 );
               },
               errorBuilder: (context, error, stackTrace) {
-                debugPrint('Erro ao carregar imagem da questão: $error');
-                debugPrint('URL da imagem: $urlCompleta');
-
                 return Container(
                   height: 180,
                   width: double.infinity,
@@ -397,11 +482,7 @@ class _JogarScreenState extends State<JogarScreen>
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(
-                          Icons.broken_image,
-                          size: 56,
-                          color: Colors.redAccent,
-                        ),
+                        Icon(Icons.broken_image, size: 56, color: Colors.redAccent),
                         SizedBox(height: 8),
                         Text(
                           'Não foi possível carregar a imagem da questão.',
@@ -563,7 +644,8 @@ class _JogarScreenState extends State<JogarScreen>
                 setState(() {
                   _modoRascunho = !_modoRascunho;
                   if (!_modoRascunho) {
-                    _pontos.clear(); // Apaga o rascunho ao desativar
+                    _pontos.clear(); 
+                    _modoBorracha = false;
                   }
                 });
               },
@@ -572,6 +654,7 @@ class _JogarScreenState extends State<JogarScreen>
         ),
         body: Stack(
           children: [
+            // Camada Principal: Questão e Interação
             SafeArea(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(20),
@@ -628,33 +711,47 @@ class _JogarScreenState extends State<JogarScreen>
               ),
             ),
             
-            // Camada do Rascunho
+            // Camada Intermediária: Tela de Desenho (Canvas)
             if (_modoRascunho)
               Positioned.fill(
                 child: GestureDetector(
                   onPanStart: (details) {
                     setState(() {
-                      _pontos.add(details.localPosition);
+                      _pontos.add(PontoRascunho(
+                        offset: details.localPosition,
+                        cor: _corRascunhoAtual,
+                        isBorracha: _modoBorracha,
+                        espessura: _modoBorracha ? 25.0 : 3.0, // Borracha mais grossa
+                      ));
                     });
                   },
                   onPanUpdate: (details) {
                     setState(() {
-                      _pontos.add(details.localPosition);
+                      _pontos.add(PontoRascunho(
+                        offset: details.localPosition,
+                        cor: _corRascunhoAtual,
+                        isBorracha: _modoBorracha,
+                        espessura: _modoBorracha ? 25.0 : 3.0,
+                      ));
                     });
                   },
                   onPanEnd: (details) {
                     setState(() {
-                      _pontos.add(null);
+                      _pontos.add(PontoRascunho(offset: null)); // Quebra a linha
                     });
                   },
                   child: Container(
-                    color: Colors.transparent, // Necessário para detectar toques
+                    color: Colors.transparent, 
                     child: CustomPaint(
                       painter: RascunhoPainter(_pontos),
                     ),
                   ),
                 ),
               ),
+
+            // Camada Superior: Barra de Ferramentas (Por cima do desenho)
+            if (_modoRascunho) 
+              _barraFerramentasRascunho(),
           ],
         ),
       ),
@@ -662,24 +759,51 @@ class _JogarScreenState extends State<JogarScreen>
   }
 }
 
-// Classe que desenha o rascunho, colocada FORA da classe _JogarScreenState
+// ==== CLASSES DE PINTURA E MODELAGEM ==== //
+
+class PontoRascunho {
+  final Offset? offset;
+  final Color cor;
+  final double espessura;
+  final bool isBorracha;
+
+  PontoRascunho({
+    this.offset,
+    this.cor = Colors.blueAccent,
+    this.espessura = 3.0,
+    this.isBorracha = false,
+  });
+}
+
 class RascunhoPainter extends CustomPainter {
-  final List<Offset?> pontos;
+  final List<PontoRascunho> pontos;
 
   RascunhoPainter(this.pontos);
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.blueAccent
-      ..strokeCap = StrokeCap.round
-      ..strokeWidth = 3.0;
+    // Usamos saveLayer para permitir que a borracha apague apenas os traços
+    // e não o fundo do aplicativo que está por baixo da tela transparente.
+    canvas.saveLayer(Rect.fromLTWH(0, 0, size.width, size.height), Paint());
 
     for (int i = 0; i < pontos.length - 1; i++) {
-      if (pontos[i] != null && pontos[i + 1] != null) {
-        canvas.drawLine(pontos[i]!, pontos[i + 1]!, paint);
+      if (pontos[i].offset != null && pontos[i + 1].offset != null) {
+        final paint = Paint()
+          ..strokeCap = StrokeCap.round
+          ..strokeWidth = pontos[i].espessura
+          ..style = PaintingStyle.stroke;
+
+        if (pontos[i].isBorracha) {
+          paint.blendMode = BlendMode.clear; // Apaga os pixels tocados
+        } else {
+          paint.color = pontos[i].cor;
+        }
+
+        canvas.drawLine(pontos[i].offset!, pontos[i + 1].offset!, paint);
       }
     }
+
+    canvas.restore();
   }
 
   @override
