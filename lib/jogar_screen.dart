@@ -638,6 +638,7 @@ _perguntaAtual = _lerTexto(q['pergunta']).replaceAll(RegExp(r'\s+'), ' ').trim()
               icon: Icon(
                 _modoRascunho ? Icons.edit_off : Icons.edit,
                 color: _modoRascunho ? Colors.orange : null,
+                size: 55,
               ),
               tooltip: 'Rascunho',
               onPressed: () {
