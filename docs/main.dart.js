@@ -104346,7 +104346,7 @@ p=i.cx
 o=i.db
 n=o?B.arW:B.A3
 m=t.p
-q=A.rS(A.d([A.np(h,h,h,A.hP(n,o?B.fU:h,h,h),h,h,new A.aE2(i),h,h,h,"Rascunho")],m),!p,h,!0,h,h,q)
+q=A.rS(A.d([A.np(h,h,h,A.hP(n,o?B.fU:h,h,55),h,h,new A.aE2(i),h,h,h,"Rascunho")],m),!p,h,!0,h,h,q)
 l=g.length
 k=i.w+1
 j=l===0?0:k/l
@@ -104516,7 +104516,7 @@ s=r.gdR().e.a
 return new A.os($.aOw(),new A.apq(s),null,null,t.lj)}}
 A.apq.prototype={
 $3(a,b,c){var s=null,r=$.aSX(),q=A.vQ(s,A.aOX(B.aF,s,s,B.dj),!0),p=A.vQ(s,A.aOX(B.aO,s,s,B.dj),!0),o=this.a!=null?B.Gp:B.mr
-return new A.um(r,o,new A.app(),"Olimp\xedada de Matem\xe1tica",q,p,b,!1,s)},
+return new A.um(r,o,new A.app(),"Olimp\xedada Play",q,p,b,!1,s)},
 $S:672}
 A.app.prototype={
 $2(a,b){var s=null,r=A.d([],t.p)

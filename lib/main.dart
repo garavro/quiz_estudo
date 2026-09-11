@@ -51,7 +51,7 @@ class QuizApp extends StatelessWidget {
           navigatorKey: navigatorKey,
 
           debugShowCheckedModeBanner: false,
-          title: 'Olimpíada de Matemática',
+          title: 'Olimpíada Play',
 
           themeMode: mode,
 
