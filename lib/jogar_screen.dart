@@ -361,7 +361,8 @@ _perguntaAtual = _lerTexto(q['pergunta']).replaceAll(RegExp(r'\s+'), ' ').trim()
         _modoBorracha = false; // Desativa a borracha ao escolher cor
       }),
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 6),
+        // Mudado de horizontal para vertical
+        margin: const EdgeInsets.symmetric(vertical: 6), 
         width: 28,
         height: 28,
         decoration: BoxDecoration(
@@ -386,17 +387,19 @@ _perguntaAtual = _lerTexto(q['pergunta']).replaceAll(RegExp(r'\s+'), ' ').trim()
 
   Widget _barraFerramentasRascunho() {
     return Positioned(
-      top: 16,
-      left: 0,
-      right: 0,
+      // Posiciona na direita e estica de cima a baixo para permitir a centralização vertical
+      right: 16,
+      top: 0,
+      bottom: 0,
       child: Center(
         child: Material(
           elevation: 4,
           borderRadius: BorderRadius.circular(30),
           color: Theme.of(context).colorScheme.surface,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
+            // Inverte o preenchimento (agora mais largo na vertical)
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
+            child: Column( // Mudado de Row para Column
               mainAxisSize: MainAxisSize.min,
               children: [
                 _botaoCor(Colors.black),
@@ -404,10 +407,11 @@ _perguntaAtual = _lerTexto(q['pergunta']).replaceAll(RegExp(r'\s+'), ' ').trim()
                 _botaoCor(Colors.redAccent),
                 _botaoCor(Colors.green),
                 Container(
-                  width: 1,
-                  height: 24,
+                  // Inverte largura e altura da linha divisória
+                  width: 24, 
+                  height: 1, 
                   color: Colors.grey.shade400,
-                  margin: const EdgeInsets.symmetric(horizontal: 12),
+                  margin: const EdgeInsets.symmetric(vertical: 12),
                 ),
                 IconButton(
                   icon: Icon(
@@ -419,7 +423,7 @@ _perguntaAtual = _lerTexto(q['pergunta']).replaceAll(RegExp(r'\s+'), ' ').trim()
                   constraints: const BoxConstraints(),
                   padding: EdgeInsets.zero,
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(height: 16), // Trocado width por height
                 IconButton(
                   icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
                   onPressed: () => setState(() => _pontos.clear()),
