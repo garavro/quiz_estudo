@@ -60,6 +60,8 @@ class _JogarScreenState extends State<JogarScreen>
   List<PontoRascunho> _pontos = [];
   Color _corRascunhoAtual = Colors.blueAccent;
   bool _modoBorracha = false;
+  bool _fundoBrancoAtivo = false; // <--- NOVA VARIÁVEL AQUI
+
 
   final List<Map<String, dynamic>> _historicoRespostas = [];
 
@@ -247,6 +249,7 @@ _perguntaAtual = _lerTexto(q['pergunta']).replaceAll(RegExp(r'\s+'), ' ').trim()
         _pontos.clear();
         _modoRascunho = false;
         _modoBorracha = false;
+        _fundoBrancoAtivo = false; // <--- ADICIONE AQUI
       });
     } else {
       setState(() {
@@ -413,6 +416,19 @@ _perguntaAtual = _lerTexto(q['pergunta']).replaceAll(RegExp(r'\s+'), ' ').trim()
                   color: Colors.grey.shade400,
                   margin: const EdgeInsets.symmetric(vertical: 12),
                 ),
+                // === NOVO BOTÃO DE FOLHA EM BRANCO AQUI ===
+                IconButton(
+                  icon: Icon(
+                    _fundoBrancoAtivo ? Icons.rectangle : Icons.rectangle_outlined,
+                    color: _fundoBrancoAtivo ? Colors.orange : Colors.grey.shade600,
+                  ),
+                  onPressed: () => setState(() => _fundoBrancoAtivo = !_fundoBrancoAtivo),
+                  tooltip: _fundoBrancoAtivo ? 'Fundo Transparente' : 'Folha em Branco',
+                  constraints: const BoxConstraints(),
+                  padding: EdgeInsets.zero,
+                ),
+                const SizedBox(height: 16),
+                // ==========================================
                 IconButton(
                   icon: Icon(
                     Icons.cleaning_services_rounded,
@@ -715,6 +731,16 @@ _perguntaAtual = _lerTexto(q['pergunta']).replaceAll(RegExp(r'\s+'), ' ').trim()
                 ),
               ),
             ),
+            // === NOVA CAMADA: FOLHA EM BRANCO ===
+            // Fica por cima da questão para esconder o texto, mas embaixo dos seus desenhos
+            if (_modoRascunho && _fundoBrancoAtivo)
+              Positioned.fill(
+                child: Container(
+                  // Usa a cor padrão de fundo do app (funciona tanto no tema claro quanto no escuro)
+                  color: Theme.of(context).scaffoldBackgroundColor, 
+                ),
+              ),
+            // =====================================
             
             // Camada Intermediária: Tela de Desenho (Canvas)
             if (_modoRascunho)
