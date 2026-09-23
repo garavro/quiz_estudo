@@ -734,7 +734,7 @@ Widget _botaoPerfil() {
       _itemMenu(
         valor: 3,
         icone: Icons.emoji_events,
-        texto: 'Placar: ${_pontuacaoAtual ?? 0} pts',
+        texto: 'Placar',
       ),
 
       _itemMenu(
