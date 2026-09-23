@@ -1,8 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'services/level_service.dart';
+// Mantemos a importação caso seja usada em outro lugar, mas a busca agora é nativa via Supabase
 import 'services/ranking_service.dart';
 
 class PlacarScreen extends StatefulWidget {
@@ -13,10 +15,13 @@ class PlacarScreen extends StatefulWidget {
 }
 
 class _PlacarScreenState extends State<PlacarScreen> {
-  final RankingService _rankingService = RankingService();
-
   bool _carregando = true;
   List<dynamic> _ranking = [];
+
+  // Novas variáveis para o usuário logado e o limite do ranking
+  int _limiteRanking = 10;
+  int? _minhaPosicao;
+  int? _meusPontos;
 
   Timer? _timerAtualizacao;
 
@@ -77,17 +82,54 @@ class _PlacarScreenState extends State<PlacarScreen> {
 
     try {
       final filtro = _filtros[_filtroSelecionado];
+      final supabase = Supabase.instance.client;
 
-      final ranking = filtro.nivel == null
-          ? await _rankingService.buscarTop10()
-          : await _rankingService.buscarTop10PorNivel(
-              nivel: filtro.nivel!,
-            );
+      // 1. Constrói a busca (Filtros DEVEM vir antes do order e do limit)
+      var queryRanking = supabase.from('perfis').select();
+
+      if (filtro.nivel != null) {
+        queryRanking = queryRanking.eq('nivel_atual', filtro.nivel!);
+      }
+
+      // Finaliza aplicando a ordem e o limite
+      final rankingData = await queryRanking
+          .order('pontuacao_total', ascending: false)
+          .limit(_limiteRanking);
+
+      // 2. Busca os dados do usuário atual (minha posição e pontos)
+      final userId = supabase.auth.currentUser?.id;
+      int? minhaPos;
+      int? meusPts;
+
+      if (userId != null) {
+        final meuPerfil = await supabase
+            .from('perfis')
+            .select('pontuacao_total, nivel_atual')
+            .eq('id', userId)
+            .maybeSingle();
+
+        if (meuPerfil != null) {
+          meusPts = _lerPontuacao(meuPerfil['pontuacao_total']);
+
+          // 3. Calcula a posição verificando quantas pessoas têm pontuação maior
+          var queryPosicao = supabase.from('perfis').select('id');
+
+          if (filtro.nivel != null) {
+            queryPosicao = queryPosicao.eq('nivel_atual', filtro.nivel!);
+          }
+
+          // Executa a busca e conta o tamanho da lista retornada (compatível com qualquer versão)
+          final List<dynamic> pessoasNaFrente = await queryPosicao.gt('pontuacao_total', meusPts);
+          minhaPos = pessoasNaFrente.length + 1;
+        }
+      }
 
       if (!mounted) return;
 
       setState(() {
-        _ranking = ranking;
+        _ranking = rankingData;
+        _minhaPosicao = minhaPos;
+        _meusPontos = meusPts;
         _carregando = false;
       });
     } catch (e) {
@@ -259,6 +301,38 @@ class _PlacarScreenState extends State<PlacarScreen> {
     );
   }
 
+  // Novo seletor de TOP 10 / TOP 20
+  Widget _seletorLimite() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        ChoiceChip(
+          label: const Text('Top 10'),
+          selected: _limiteRanking == 10,
+          selectedColor: Colors.amber.shade200,
+          onSelected: (selecionado) {
+            if (selecionado && _limiteRanking != 10) {
+              setState(() => _limiteRanking = 10);
+              _buscarRanking();
+            }
+          },
+        ),
+        const SizedBox(width: 12),
+        ChoiceChip(
+          label: const Text('Top 20'),
+          selected: _limiteRanking == 20,
+          selectedColor: Colors.amber.shade200,
+          onSelected: (selecionado) {
+            if (selecionado && _limiteRanking != 20) {
+              setState(() => _limiteRanking = 20);
+              _buscarRanking();
+            }
+          },
+        ),
+      ],
+    );
+  }
+
   Widget _cabecalhoRanking(BuildContext context) {
     final filtro = _filtros[_filtroSelecionado];
 
@@ -291,6 +365,8 @@ class _PlacarScreenState extends State<PlacarScreen> {
           ),
           const SizedBox(height: 20),
           _seletorRanking(),
+          const SizedBox(height: 16),
+          _seletorLimite(), // Adicionado o seletor Top10/20 aqui
         ],
       ),
     );
@@ -340,8 +416,9 @@ class _PlacarScreenState extends State<PlacarScreen> {
   ) {
     final posicao = index + 1;
 
+    // Ajustado para priorizar o apelido, se existir
     final nome = _lerTexto(
-      jogador['nome_completo'],
+      jogador['apelido'] ?? jogador['nome_completo'],
       padrao: 'Jogador Anônimo',
     );
 
@@ -495,6 +572,74 @@ class _PlacarScreenState extends State<PlacarScreen> {
     );
   }
 
+  // Barra fixa exibindo o ranqueamento do usuário atual
+  Widget? _barraMeuDesempenho() {
+    if (_meusPontos == null || _minhaPosicao == null) return null;
+
+    return Container(
+padding: const EdgeInsets.only(left: 85, right: 20, top: 16, bottom: 16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 8,
+            offset: Offset(0, -3),
+          )
+        ],
+      ),
+      child: SafeArea(
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 22,
+              backgroundColor: Colors.blueAccent,
+              child: Text(
+                '$_minhaPosicaoº',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+            const SizedBox(width: 16),
+            const Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Seu Desempenho',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  Text(
+                    'Sua posição na categoria selecionada',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Text(
+              '$_meusPontos pts',
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+                color: Colors.green,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final filtro = _filtros[_filtroSelecionado];
@@ -524,6 +669,8 @@ class _PlacarScreenState extends State<PlacarScreen> {
               onRefresh: () => _buscarRanking(),
               child: _listaRanking(context),
             ),
+      // Adiciona o Bottom Navigation Bar se os dados estiverem disponíveis
+      bottomNavigationBar: _barraMeuDesempenho(), 
     );
   }
 }
