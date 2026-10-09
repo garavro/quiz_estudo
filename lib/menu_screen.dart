@@ -1,3 +1,9 @@
+import 'admin_dashboard_screen.dart';
+import 'prova_oficial_login_screen.dart';
+import 'prova_lobby_screen.dart';
+import 'professor_login_screen.dart';
+import 'package:url_launcher/url_launcher.dart';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:convert';
 
@@ -34,6 +40,9 @@ class _MenuScreenState extends State<MenuScreen> {
   bool _carregandoJogar = false;
   bool _carregandoLogout = false;
   bool _atualizandoSerie = false;
+bool _verificandoPermissoes = true; // NOVO: Controla a tela de carregamento inicial
+  bool _exibirProvaOficial = false;   // NOVO: Controla o botão Prova Oficial
+  bool _exibirAreaProfessor = false;  // NOVO: Controla o botão Área do Professor
 
   static const List<String> _seriesEscolares = [
     '4º ano do Ensino Fundamental',
@@ -49,12 +58,69 @@ class _MenuScreenState extends State<MenuScreen> {
     'Pós-graduado',
   ];
 
+
+
   @override
 void initState() {
   super.initState();
   _carregarPreferencias();
   _verificarAvisoAntiCheat();
+_verificarPermissoesEProvas(); // <--- Adicionada a chamada da nova função aqui
 }
+
+Future<void> _verificarPermissoesEProvas() async {
+    try {
+      final supabase = Supabase.instance.client;
+      
+      // 1. Verifica se existe pelo menos UMA prova oficial cadastrada
+      final provas = await supabase
+          .from('provas_oficiais')
+          .select('id')
+          .limit(1);
+          
+      final temProva = provas.isNotEmpty;
+
+      // 2. Verifica se o email do usuário logado é de um Professor ou Admin
+      bool eProfessorOuAdmin = false;
+      final user = supabase.auth.currentUser;
+
+      if (user != null && user.email != null) {
+        final emailLogado = user.email!.toLowerCase();
+        
+        // Procura na tabela de professores
+        final prof = await supabase
+            .from('professores_aplicadores')
+            .select('id')
+            .eq('email', emailLogado)
+            .maybeSingle();
+            
+        if (prof != null) {
+          eProfessorOuAdmin = true;
+        } else {
+          // Se não é professor, verifica se é admin (coordenador)
+          final admin = await supabase
+              .from('admins')
+              .select('id')
+              .eq('user_id', user.id)
+              .maybeSingle();
+              
+          if (admin != null) eProfessorOuAdmin = true;
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _exibirProvaOficial = temProva;
+          _exibirAreaProfessor = eProfessorOuAdmin;
+          _verificandoPermissoes = false; // Terminou de verificar
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _verificandoPermissoes = false);
+      }
+    }
+  }
 
 Future<void> _confirmarExclusaoConta() async {
   final confirmarController = TextEditingController();
@@ -651,13 +717,10 @@ Widget _botaoPerfil() {
           break;
 
         case 4:
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Email de suporte:olimpiadamatematica393@gmail.com'),
-            ),
-          );
+          // Abre a página de regras e suporte
+          final url = Uri.parse('https://garavro.github.io/quiz_estudo/Central-De-Ajuda-E-Regras#suporte');
+          launchUrl(url, mode: LaunchMode.externalApplication);
           break;
-
         case 5:
   _sair();
   break;	
@@ -835,9 +898,9 @@ PopupMenuItem<int> _itemMenu({
   );
 }
 
-  Widget _conteudoCentral(BuildContext context) {
-    final larguraBotao =
-        MediaQuery.of(context).size.width > 500 ? 260.0 : 220.0;
+Widget _conteudoCentral(BuildContext context) {
+    // Aumentamos os tamanhos para acomodar textos maiores
+    final larguraBotao = MediaQuery.of(context).size.width > 500 ? 300.0 : 260.0;
 
     return Center(
       child: SingleChildScrollView(
@@ -863,6 +926,8 @@ PopupMenuItem<int> _itemMenu({
             const SizedBox(height: 20),
             _infoAluno(),
             const SizedBox(height: 55),
+            
+            // 1. BOTÃO JOGAR
             AppButton(
               texto: 'JOGAR',
               largura: larguraBotao,
@@ -872,6 +937,27 @@ PopupMenuItem<int> _itemMenu({
               onPressed: _jogar,
             ),
             const SizedBox(height: 20),
+            
+          // 2. BOTÃO PROVA OFICIAL
+            if (_exibirProvaOficial) ...[
+              AppButton(
+                texto: 'PROVA OFICIAL',
+                largura: larguraBotao,
+                altura: 62,
+                icone: Icons.assignment_rounded,
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const ProvaOficialLoginScreen(),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 20),
+            ],
+            
+            // 3. BOTÃO PLACAR
             AppButton(
               texto: 'PLACAR',
               largura: larguraBotao,
@@ -886,12 +972,29 @@ PopupMenuItem<int> _itemMenu({
                 );
               },
             ),
+            const SizedBox(height: 20),
+            
+           if (_exibirAreaProfessor) ...[
+              AppButton(
+                texto: 'ÁREA DO PROFESSOR',
+                largura: larguraBotao,
+                altura: 62,
+                icone: Icons.admin_panel_settings, 
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const ProfessorLoginScreen(), 
+                    ),
+                  );
+                },
+              ),
+            ],
           ],
         ),
       ),
     );
   }
-
   Widget _overlayCarregando() {
     if (!_carregandoLogout && !_atualizandoSerie) {
       return const SizedBox.shrink();
@@ -925,6 +1028,17 @@ PopupMenuItem<int> _itemMenu({
 
   @override
   Widget build(BuildContext context) {
+    // NOVO: Mostra um carregamento enquanto verifica as permissões e provas
+    if (_verificandoPermissoes) {
+      return Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        body: const Center(
+          child: CircularProgressIndicator(color: Colors.blueAccent),
+        ),
+      );
+    }
+
+    // Código original mantido
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Stack(

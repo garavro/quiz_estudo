@@ -84,17 +84,20 @@ class _PlacarScreenState extends State<PlacarScreen> {
       final filtro = _filtros[_filtroSelecionado];
       final supabase = Supabase.instance.client;
 
-      // 1. Constrói a busca (Filtros DEVEM vir antes do order e do limit)
+      // 1. Constrói a busca base (Filtros DEVEM vir antes do order)
       var queryRanking = supabase.from('perfis').select();
 
       if (filtro.nivel != null) {
         queryRanking = queryRanking.eq('nivel_atual', filtro.nivel!);
       }
 
-      // Finaliza aplicando a ordem e o limite
-      final rankingData = await queryRanking
-          .order('pontuacao_total', ascending: false)
-          .limit(_limiteRanking);
+      // Aplica a ordem de quem tem mais pontos
+      var queryOrdenada = queryRanking.order('pontuacao_total', ascending: false);
+
+      // NOVO: Se _limiteRanking for 0 (Geral), não aplica o .limit()
+      final rankingData = _limiteRanking == 0 
+          ? await queryOrdenada 
+          : await queryOrdenada.limit(_limiteRanking);
 
       // 2. Busca os dados do usuário atual (minha posição e pontos)
       final userId = supabase.auth.currentUser?.id;
@@ -118,7 +121,6 @@ class _PlacarScreenState extends State<PlacarScreen> {
             queryPosicao = queryPosicao.eq('nivel_atual', filtro.nivel!);
           }
 
-          // Executa a busca e conta o tamanho da lista retornada (compatível com qualquer versão)
           final List<dynamic> pessoasNaFrente = await queryPosicao.gt('pontuacao_total', meusPts);
           minhaPos = pessoasNaFrente.length + 1;
         }
@@ -301,35 +303,63 @@ class _PlacarScreenState extends State<PlacarScreen> {
     );
   }
 
-  // Novo seletor de TOP 10 / TOP 20
-  Widget _seletorLimite() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        ChoiceChip(
-          label: const Text('Top 10'),
-          selected: _limiteRanking == 10,
-          selectedColor: Colors.amber.shade200,
-          onSelected: (selecionado) {
-            if (selecionado && _limiteRanking != 10) {
-              setState(() => _limiteRanking = 10);
-              _buscarRanking();
-            }
-          },
-        ),
-        const SizedBox(width: 12),
-        ChoiceChip(
-          label: const Text('Top 20'),
-          selected: _limiteRanking == 20,
-          selectedColor: Colors.amber.shade200,
-          onSelected: (selecionado) {
-            if (selecionado && _limiteRanking != 20) {
-              setState(() => _limiteRanking = 20);
-              _buscarRanking();
-            }
-          },
-        ),
-      ],
+ Widget _seletorLimite() {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          ChoiceChip(
+            label: const Text('Top 10'),
+            selected: _limiteRanking == 10,
+            selectedColor: Colors.amber.shade200,
+            onSelected: (selecionado) {
+              if (selecionado && _limiteRanking != 10) {
+                setState(() => _limiteRanking = 10);
+                _buscarRanking();
+              }
+            },
+          ),
+          const SizedBox(width: 12),
+          ChoiceChip(
+            label: const Text('Top 20'),
+            selected: _limiteRanking == 20,
+            selectedColor: Colors.amber.shade200,
+            onSelected: (selecionado) {
+              if (selecionado && _limiteRanking != 20) {
+                setState(() => _limiteRanking = 20);
+                _buscarRanking();
+              }
+            },
+          ),
+          const SizedBox(width: 12),
+          ChoiceChip(
+            label: const Text('Top 100'),
+            selected: _limiteRanking == 100,
+            selectedColor: Colors.amber.shade200,
+            onSelected: (selecionado) {
+              if (selecionado && _limiteRanking != 100) {
+                setState(() => _limiteRanking = 100);
+                _buscarRanking();
+              }
+            },
+          ),
+          const SizedBox(width: 12),
+          
+          // NOVO: Filtro "Geral" que define o limite como 0 (sem limite)
+          ChoiceChip(
+            label: const Text('Geral'),
+            selected: _limiteRanking == 0,
+            selectedColor: Colors.amber.shade200,
+            onSelected: (selecionado) {
+              if (selecionado && _limiteRanking != 0) {
+                setState(() => _limiteRanking = 0);
+                _buscarRanking();
+              }
+            },
+          ),
+        ],
+      ),
     );
   }
 
