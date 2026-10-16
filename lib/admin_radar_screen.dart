@@ -49,67 +49,108 @@ class _AdminRadarScreenState extends State<AdminRadarScreen> {
           .eq('user_id', userId)
           .maybeSingle();
 
+      List<String>? idsPermitidos;
+
       if (adminCheck != null) {
         if (mounted) setState(() => _tipoVisao = 'Visão Global (Admin)');
-        
-        // ⚠️ AJUSTE 1: Mude 'sessoes_prova' para o nome exato da sua tabela de logs de fraude
-        final respostaLogs = await _supabase
-            .from('provas_oficiais') 
-            .select()
-            .order('criado_em', ascending: false)
+      } else {
+        // 2. Se não é Admin, é Professor.
+        if (mounted) setState(() => _tipoVisao = 'Visão da Turma (Professor)');
+
+        final alunosTurma = await _supabase
+            .from('alunos_oficiais')
+            .select('id')
+            .eq('email_professor', userEmail!);
+
+        idsPermitidos = alunosTurma.map((a) => a['id'].toString()).toList();
+
+        if (idsPermitidos.isEmpty) {
+          if (mounted) {
+            setState(() {
+              _logs = [];
+              _carregando = false;
+            });
+          }
+          return;
+        }
+      }
+
+      // 3. Prepara a busca das sessões bloqueadas (Primeiro filtramos, DEPOIS ordenamos)
+      final filterBuilder = _supabase
+          .from('sessoes_prova')
+          .select()
+          .eq('status', 'bloqueada');
+
+      List<dynamic> respostaLogs;
+
+      if (idsPermitidos != null) {
+        // Se for professor, aplica o filtro de IDs permitidos antes da ordenação
+        respostaLogs = await filterBuilder
+            .inFilter('aluno_id', idsPermitidos)
+            .order('data_hora_fim', ascending: false)
             .limit(50);
-            
+      } else {
+        // Se for Admin, ordena diretamente
+        respostaLogs = await filterBuilder
+            .order('data_hora_fim', ascending: false)
+            .limit(50);
+      }
+
+      if (respostaLogs.isEmpty) {
         if (mounted) {
           setState(() {
-            _logs = respostaLogs;
+            _logs = [];
             _carregando = false;
           });
         }
         return;
       }
 
-      // 2. Se não é Admin, é Professor.
-      if (mounted) setState(() => _tipoVisao = 'Visão da Turma (Professor)');
-
-      // Vai buscar OS DOCUMENTOS (ou IDs) apenas dos alunos deste professor
-      final alunosTurma = await _supabase
-          .from('alunos_oficiais')
-          .select('documento')
-          .eq('email_professor', userEmail!);
-
-      final List<String> documentosPermitidos = alunosTurma
-          .map((a) => a['documento'].toString())
+      // 4. Busca os dados dos alunos infratores na tabela alunos_oficiais
+      final idsInfratores = respostaLogs
+          .map((log) => log['aluno_id'].toString())
+          .toSet()
           .toList();
 
-      // Se o professor não tiver alunos, o radar fica vazio.
-      if (documentosPermitidos.isEmpty) {
-        if (mounted) setState(() { _logs = []; _carregando = false; });
-        return;
+      final respostaAlunosInfratores = await _supabase
+          .from('alunos_oficiais')
+          .select('id, nome, documento')
+          .inFilter('id', idsInfratores);
+
+      final Map<String, Map<String, dynamic>> mapAlunos = {};
+      for (var aluno in respostaAlunosInfratores) {
+        mapAlunos[aluno['id'].toString()] = aluno;
       }
 
-      // Filtra os logs do radar usando APENAS os documentos permitidos
-      // ⚠️ AJUSTE 2: Mude 'sessoes_prova' para a sua tabela de logs
-      // ⚠️ AJUSTE 3: Mude 'documento_aluno' para o nome da coluna que guarda o identificador do aluno nessa tabela
-      final respostaLogs = await _supabase
-          .from('provas_oficiais') 
-          .select()
-          .filter('documento', 'in', documentosPermitidos) 
-          .order('criado_em', ascending: false)
-          .limit(50);
+      // 5. Mapeia os dados do aluno para cada log de trapaça
+      final List<Map<String, dynamic>> logsCompletos = [];
+      for (var log in respostaLogs) {
+        final logMutavel = Map<String, dynamic>.from(log);
+        final alunoId = log['aluno_id'].toString();
+
+        if (mapAlunos.containsKey(alunoId)) {
+          logMutavel['alunos_oficiais'] = mapAlunos[alunoId];
+        }
+        logsCompletos.add(logMutavel);
+      }
 
       if (mounted) {
         setState(() {
-          _logs = respostaLogs;
+          _logs = logsCompletos;
           _carregando = false;
         });
       }
-
     } catch (e) {
       if (mounted) {
         setState(() => _carregando = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro de sincronização: $e'), backgroundColor: Colors.redAccent)
-        );
+        if (!silencioso) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Erro de sincronização: $e'),
+              backgroundColor: Colors.redAccent,
+            ),
+          );
+        }
       }
     }
   }
@@ -131,7 +172,6 @@ class _AdminRadarScreenState extends State<AdminRadarScreen> {
       ),
       body: Column(
         children: [
-          // Barra de status a mostrar qual é o nível de permissão a ser exibido
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
@@ -168,29 +208,22 @@ class _AdminRadarScreenState extends State<AdminRadarScreen> {
                       itemBuilder: (context, index) {
                         final log = _logs[index];
                         
-                        // ⚠️ AJUSTE 4: Verifique se as variáveis correspondem às colunas da sua tabela de logs
-                        final nome = log['aluno'] ?? 'Aluno Desconhecido';
-                        final acao = log['acao'] ?? 'Atividade Registada';
-                        final data = log['criado_em'] != null 
-                            ? DateTime.parse(log['criado_em']).toLocal().toString().split('.')[0] 
+                        // Agora puxa o nome diretamente da tabela oficial!
+                        final nome = log['alunos_oficiais']?['nome'] ?? 'Aluno Desconhecido';
+                        final documento = log['alunos_oficiais']?['documento'] ?? 'Sem Doc';
+                        final acao = log['motivo_bloqueio'] ?? 'Tentou sair da prova ou fechou o app';
+                        final data = log['data_hora_fim'] != null 
+                            ? DateTime.parse(log['data_hora_fim']).toLocal().toString().split('.')[0] 
                             : '--:--';
                         
-                        // Lógica visual: Se a ação incluir "saiu" ou "fraude", fica vermelho.
-                        final bool critico = acao.toString().toLowerCase().contains('saiu') || 
-                                             acao.toString().toLowerCase().contains('fraude');
-
                         return Card(
                           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                          elevation: critico ? 4 : 1,
-                          color: critico ? Colors.red.shade50 : Colors.white,
+                          elevation: 4,
+                          color: Colors.red.shade50,
                           child: ListTile(
-                            leading: Icon(
-                              critico ? Icons.warning_amber_rounded : Icons.info_outline,
-                              color: critico ? Colors.red : Colors.blueGrey,
-                              size: 32,
-                            ),
+                            leading: const Icon(Icons.warning_amber_rounded, color: Colors.red, size: 32),
                             title: Text(nome, style: const TextStyle(fontWeight: FontWeight.bold)),
-                            subtitle: Text('$acao\n$data', style: TextStyle(color: Colors.grey.shade700)),
+                            subtitle: Text('Doc: $documento\n$acao\n$data', style: TextStyle(color: Colors.grey.shade800)),
                             isThreeLine: true,
                           ),
                         );

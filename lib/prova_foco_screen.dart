@@ -1,3 +1,4 @@
+import 'widgets/math_text.dart';
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
@@ -69,13 +70,34 @@ class _ProvaFocoScreenState extends State<ProvaFocoScreen> with WidgetsBindingOb
 
   Future<void> _iniciarProva() async {
     try {
+      // 1. Busca os dados da sessão atual para saber quando o aluno INICIOU a prova
+      final sessaoAtual = await _supabase
+          .from('sessoes_prova')
+          .select('data_hora_inicio, provas_oficiais(tempo_limite_minutos)')
+          .eq('id', widget.sessaoId)
+          .single();
+
+      final dataInicioUTC = DateTime.parse(sessaoAtual['data_hora_inicio']).toUtc();
+      final duracaoMinutos = sessaoAtual['provas_oficiais']['tempo_limite_minutos'] as int;
+
+      // O tempo limite exato deste aluno é a hora que ele começou + os minutos da prova
+      final limiteIndividual = dataInicioUTC.add(Duration(minutes: duracaoMinutos));
+
+      // Compara o limite individual com o limite global (dataFimSessao que vem do Widget)
+      // e usa o menor tempo. Assim, se a prova encerra para a escola toda às 18h, o aluno 
+      // não pode fazer até às 18:30, mesmo que tenha começado às 17h.
+      DateTime limiteFinalParaUsar = limiteIndividual;
+      if (widget.dataFimSessao.isBefore(limiteIndividual)) {
+        limiteFinalParaUsar = widget.dataFimSessao;
+      }
+
+      // 2. Busca as questões da prova (Código Original mantido)
       final dados = await _supabase
           .from('provas_questoes')
-          .select('peso, questoes:quest (*)')
+          .select('peso, questoes:questoes_oficiais (*)') 
           .eq('prova_id', widget.provaId)
           .order('ordem', ascending: true);
 
-      // Embaralha as alternativas de forma determinística (não muda ao recarregar a página)
       for (var item in dados) {
         final questao = item['questoes'];
         if (questao == null) continue;
@@ -90,7 +112,6 @@ class _ProvaFocoScreenState extends State<ProvaFocoScreen> with WidgetsBindingOb
         ];
         
         opcoes.removeWhere((o) => o.trim().isEmpty);
-        // Usa o hash do ID como semente para o Random. Mistura, mas de forma fixa!
         opcoes.shuffle(Random(id.hashCode)); 
         
         _opcoesEmbaralhadas[id] = opcoes;
@@ -107,7 +128,6 @@ class _ProvaFocoScreenState extends State<ProvaFocoScreen> with WidgetsBindingOb
         
         _respostasDB[qId] = textoSalvo;
         
-        // Encontra qual letra corresponde ao texto salvo
         final opcoes = _opcoesEmbaralhadas[qId] ?? [];
         final index = opcoes.indexOf(textoSalvo);
         if (index != -1) {
@@ -123,13 +143,16 @@ class _ProvaFocoScreenState extends State<ProvaFocoScreen> with WidgetsBindingOb
         _carregando = false;
       });
 
-      _iniciarCronometro();
+      // 3. Inicia o cronómetro passando o limite calculado
+      _iniciarCronometro(limiteFinalParaUsar);
+      
     } catch (e) {
       _mostrarErroFatal('Falha técnica ao carregar:\n\n${e.toString()}');
     }
   }
 
-  void _iniciarCronometro() {
+  // A função agora recebe a data de limite exata
+  void _iniciarCronometro(DateTime horaLimite) {
     _cronometro = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_provaEncerrada) {
         timer.cancel();
@@ -137,11 +160,11 @@ class _ProvaFocoScreenState extends State<ProvaFocoScreen> with WidgetsBindingOb
       }
 
       final agora = DateTime.now().toUtc();
-      final restante = widget.dataFimSessao.difference(agora);
+      final restante = horaLimite.difference(agora);
 
       if (restante.isNegative) {
         timer.cancel();
-        _finalizarProvaPorTempo();
+        _finalizarProvaPorTempo(); // Já finaliza e fecha a tela!
       } else {
         setState(() {
           _tempoRestante = restante;
@@ -301,14 +324,11 @@ class _ProvaFocoScreenState extends State<ProvaFocoScreen> with WidgetsBindingOb
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
               Expanded(
-                child: Text(
+                child: MathText(
                   textoAlternativa,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: selecionada ? FontWeight.w600 : FontWeight.normal,
-                  ),
+                  fontSize: 16,
+                  fontWeight: selecionada ? FontWeight.w600 : FontWeight.normal,
                 ),
               ),
             ],
@@ -381,10 +401,10 @@ class _ProvaFocoScreenState extends State<ProvaFocoScreen> with WidgetsBindingOb
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
+                      MathText(
                         textoPergunta,
                         textAlign: TextAlign.justify,
-                        style: const TextStyle(fontSize: 18, height: 1.5),
+                        fontSize: 18,
                       ),
                       const SizedBox(height: 20),
                       

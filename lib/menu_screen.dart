@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb; // <--- ADICIONE ESTA LINHA
 import 'admin_dashboard_screen.dart';
 import 'prova_oficial_login_screen.dart';
 import 'prova_lobby_screen.dart';
@@ -898,6 +899,56 @@ PopupMenuItem<int> _itemMenu({
   );
 }
 
+Widget _anuncioPlayStore(BuildContext context) {
+    // Se não estiver na Web, não mostra o anúncio. Fica invisível.
+    if (!kIsWeb) return const SizedBox.shrink();
+
+    return Container(
+      width: double.infinity,
+      color: Colors.green.shade800,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: SafeArea(
+        bottom: false,
+        child: Wrap(
+          alignment: WrapAlignment.center,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 12,
+          runSpacing: 8,
+          children: [
+            const Icon(Icons.android, color: Colors.white),
+            const Text(
+              'Jogue com mais desempenho no nosso App Oficial!',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: Colors.green.shade800,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              ),
+              onPressed: () {
+                final url = Uri.parse(
+                  'https://play.google.com/store/apps/details?id=br.com.quizestudo.app&pcampaignid=web_share'
+                );
+                launchUrl(url, mode: LaunchMode.externalApplication);
+              },
+              icon: const Icon(Icons.download, size: 18),
+              label: const Text('Baixar Agora', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
 Widget _conteudoCentral(BuildContext context) {
     // Aumentamos os tamanhos para acomodar textos maiores
     final larguraBotao = MediaQuery.of(context).size.width > 500 ? 300.0 : 260.0;
@@ -1028,7 +1079,6 @@ Widget _conteudoCentral(BuildContext context) {
 
   @override
   Widget build(BuildContext context) {
-    // NOVO: Mostra um carregamento enquanto verifica as permissões e provas
     if (_verificandoPermissoes) {
       return Scaffold(
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -1038,18 +1088,27 @@ Widget _conteudoCentral(BuildContext context) {
       );
     }
 
-    // Código original mantido
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: Stack(
+      body: Column(
         children: [
-          _conteudoCentral(context),
-          Positioned(
-            top: 48,
-            right: 20,
-            child: _botaoPerfil(),
+          // 1. O Anúncio da Play Store aparece sempre no topo da coluna (se for web)
+          _anuncioPlayStore(context),
+          
+          // 2. O resto da aplicação preenche o espaço restante
+          Expanded(
+            child: Stack(
+              children: [
+                _conteudoCentral(context),
+                Positioned(
+                  top: 24, // Ajustado um pouco para cima para compensar o banner
+                  right: 20,
+                  child: _botaoPerfil(),
+                ),
+                _overlayCarregando(),
+              ],
+            ),
           ),
-          _overlayCarregando(),
         ],
       ),
     );

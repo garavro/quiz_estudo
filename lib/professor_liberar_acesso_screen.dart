@@ -22,7 +22,6 @@ class _ProfessorLiberarAcessoScreenState extends State<ProfessorLiberarAcessoScr
     super.initState();
     _carregarAlunosDaTurma();
     
-    // Atualiza a lista silenciosamente a cada 5 segundos para ter o "Tempo Real"
     _timerAtualizacao = Timer.periodic(const Duration(seconds: 5), (_) {
       if (!_carregando) _carregarAlunosDaTurma(silencioso: true);
     });
@@ -41,25 +40,71 @@ class _ProfessorLiberarAcessoScreenState extends State<ProfessorLiberarAcessoScr
       final emailUsuario = _supabase.auth.currentUser?.email;
       if (emailUsuario == null) throw Exception("Sessão expirada.");
 
-      final resposta = await _supabase
+      // 1. Busca todos os alunos oficiais deste professor
+      final respostaAlunos = await _supabase
           .from('alunos_oficiais')
           .select()
           .eq('email_professor', emailUsuario)
           .order('nome', ascending: true);
 
+      // Se não houver alunos, paramos por aqui
+      if (respostaAlunos.isEmpty) {
+        if (mounted) {
+           setState(() {
+             _alunosAgrupados = {};
+             _abasTurmas = [];
+             _carregando = false;
+           });
+        }
+        return;
+      }
+
+      // 2. Extrai os IDs dos alunos para buscar as sessões deles
+      final List<String> idsAlunos = respostaAlunos.map((a) => a['id'].toString()).toList();
+
+      // 3. Busca as sessões de prova desses alunos (para saber o status em tempo real)
+      final respostaSessoes = await _supabase
+          .from('sessoes_prova')
+          .select('aluno_id, status')
+          .filter('aluno_id', 'in', idsAlunos);
+
+      // Cria um mapa rápido de AlunoID -> StatusDaSessão
+      final Map<String, String> statusSessoes = {};
+      for (var sessao in respostaSessoes) {
+        statusSessoes[sessao['aluno_id'].toString()] = sessao['status'].toString();
+      }
+
       final Map<String, List<Map<String, dynamic>>> gruposTemp = {};
 
-      for (var aluno in resposta) {
+      for (var aluno in respostaAlunos) {
         final serie = aluno['serie'] ?? 'Série N/A';
         final turma = aluno['turma'] ?? 'Turma N/A';
         final turno = aluno['turno'] ?? 'Turno N/A';
+        final nomeAba = '$serie $turma -$turno';
+
+        // --- LÓGICA DO STATUS REAL ---
+        String statusReal = 'Não iniciada';
+        final alunoIdStr = aluno['id'].toString();
         
-        final nomeAba = '$serie $turma - $turno';
+        if (statusSessoes.containsKey(alunoIdStr)) {
+           final statusBd = statusSessoes[alunoIdStr];
+           if (statusBd == 'em_andamento') statusReal = 'Em andamento';
+           else if (statusBd == 'finalizada') statusReal = 'Finalizada';
+           else if (statusBd == 'bloqueada') statusReal = 'Bloqueada';
+           else if (statusBd == 'anulada') statusReal = 'Anulada'; // Para o caso de fraude extrema
+        }
+        
+        // Guardamos o status real para usar no visual da lista
+        // Importante: Como `respostaAlunos` vem como List<Map<String,dynamic>> que pode ser read-only,
+        // criamos um novo Map mutável para cada aluno.
+        final Map<String, dynamic> alunoMutavel = Map<String, dynamic>.from(aluno);
+        alunoMutavel['status_prova_real'] = statusReal;
+        // -----------------------------
 
         if (!gruposTemp.containsKey(nomeAba)) {
           gruposTemp[nomeAba] = [];
         }
-        gruposTemp[nomeAba]!.add(aluno);
+        gruposTemp[nomeAba]!.add(alunoMutavel);
       }
 
       final abasOrdenadas = gruposTemp.keys.toList()..sort();
@@ -75,7 +120,6 @@ class _ProfessorLiberarAcessoScreenState extends State<ProfessorLiberarAcessoScr
     } catch (e) {
       if (mounted) {
         setState(() => _carregando = false);
-        // Só mostra erro se não for uma atualização silenciosa de fundo
         if (!silencioso) {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro: $e'), backgroundColor: Colors.red));
         }
@@ -90,10 +134,27 @@ class _ProfessorLiberarAcessoScreenState extends State<ProfessorLiberarAcessoScr
     setState(() => aluno['status_acesso'] = novoStatus);
 
     try {
+      // 1. Atualiza o status de acesso na tabela principal
       await _supabase
           .from('alunos_oficiais')
           .update({'status_acesso': novoStatus})
           .eq('id', aluno['id']);
+          
+      // 2. SE FOR PARA LIBERAR, apaga a sessão bloqueada (se existir) para perdoar a trapaça
+      if (liberar) {
+         await _supabase
+            .from('sessoes_prova')
+            .delete()
+            .eq('aluno_id', aluno['id'])
+            .eq('status', 'bloqueada');
+            
+         if (mounted) {
+           ScaffoldMessenger.of(context).showSnackBar(
+             SnackBar(content: Text('${aluno['nome']} foi liberado e a prova foi perdoada!'), backgroundColor: Colors.green)
+           );
+         }
+      }
+
     } catch (e) {
       setState(() => aluno['status_acesso'] = statusAntigo);
       if (mounted) {
@@ -112,19 +173,22 @@ class _ProfessorLiberarAcessoScreenState extends State<ProfessorLiberarAcessoScr
     });
 
     try {
-      await Future.wait(alunosDaAba.map((aluno) => 
-        _supabase.from('alunos_oficiais').update({'status_acesso': 'liberado'}).eq('id', aluno['id'])
-      ));
+      await Future.wait(alunosDaAba.map((aluno) async {
+        await _supabase.from('alunos_oficiais').update({'status_acesso': 'liberado'}).eq('id', aluno['id']);
+        
+        // Apaga o bloqueio de cada aluno
+        await _supabase.from('sessoes_prova').delete()
+          .eq('aluno_id', aluno['id']).eq('status', 'bloqueada');
+      }));
       
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Turma liberada!'), backgroundColor: Colors.green));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Turma inteira liberada! (Trapaças perdoadas)'), backgroundColor: Colors.green));
       }
     } catch (e) {
       _carregarAlunosDaTurma(); 
     }
   }
 
-  // Função auxiliar para determinar a cor e o ícone do status da prova
   Widget _construirIndicadorStatus(String status) {
     Color cor;
     IconData icone;
@@ -139,10 +203,11 @@ class _ProfessorLiberarAcessoScreenState extends State<ProfessorLiberarAcessoScr
         icone = Icons.check_circle;
         break;
       case 'ausente/fraude':
+      case 'bloqueada':
         cor = Colors.red;
         icone = Icons.warning_amber_rounded;
         break;
-      default: // 'Não iniciada'
+      default: 
         cor = Colors.grey;
         icone = Icons.schedule;
     }
@@ -161,7 +226,7 @@ class _ProfessorLiberarAcessoScreenState extends State<ProfessorLiberarAcessoScr
           children: [
             Icon(icone, size: 14, color: cor),
             const SizedBox(width: 4),
-            Text(status, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: cor)),
+            Text(status.toUpperCase(), style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: cor)),
           ],
         ),
       ),
@@ -233,7 +298,7 @@ class _ProfessorLiberarAcessoScreenState extends State<ProfessorLiberarAcessoScr
                     itemBuilder: (context, index) {
                       final aluno = alunosDaAba[index];
                       final estaLiberado = aluno['status_acesso'] == 'liberado';
-                      final statusDaProva = aluno['status_prova']?.toString() ?? 'Não iniciada';
+                      final statusDaProva = aluno['status_prova_real'] ?? 'Não iniciada';
 
                       return ListTile(
                         leading: CircleAvatar(
@@ -247,7 +312,7 @@ class _ProfessorLiberarAcessoScreenState extends State<ProfessorLiberarAcessoScr
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Expanded(child: Text(aluno['nome'] ?? 'Sem Nome', style: const TextStyle(fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis)),
-                            _construirIndicadorStatus(statusDaProva), // <-- NOVO INDICADOR AQUI
+                            _construirIndicadorStatus(statusDaProva), 
                           ],
                         ),
                         subtitle: Text('Doc: ${aluno['documento']}'),
