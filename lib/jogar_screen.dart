@@ -668,7 +668,7 @@ class _JogarScreenState extends State<JogarScreen>
                 padding: const EdgeInsets.all(20),
                 child: Center(
                   child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 700),
+                    constraints: const BoxConstraints(maxWidth: 1000),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [

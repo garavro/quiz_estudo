@@ -950,8 +950,10 @@ Widget _anuncioPlayStore(BuildContext context) {
   }
 
 Widget _conteudoCentral(BuildContext context) {
-    // Aumentamos os tamanhos para acomodar textos maiores
-    final larguraBotao = MediaQuery.of(context).size.width > 500 ? 300.0 : 260.0;
+  // A largura base é 260. Se a tela for maior que 600px (tablet/web), o botão ocupa 
+    // até 40% da largura da tela, mas nunca passa de 500px para não ficar bizarro.
+    final larguraTela = MediaQuery.of(context).size.width;
+    final larguraBotao = larguraTela > 600 ? (larguraTela * 0.4).clamp(300.0, 500.0) : 260.0;
     
     // Calcula o espaço disponível na tela
     final alturaTela = MediaQuery.of(context).size.height;
