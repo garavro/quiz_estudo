@@ -83,6 +83,11 @@ class ResultadoScreen extends StatelessWidget {
     Navigator.of(context).popUntil((route) => route.isFirst);
   }
 
+  // NOVA FUNÇÃO: Retorna o utilizador para o ecrã anterior (seleção de dificuldade)
+  void _continuarJogando(BuildContext context) {
+    Navigator.of(context).pop();
+  }
+
   Widget _cardResumo(BuildContext context) {
     final cor = _corDesempenho();
 
@@ -471,10 +476,23 @@ class ResultadoScreen extends StatelessWidget {
                 ),
                 child: SafeArea(
                   top: false,
-                  child: AppButton(
-                    texto: 'VOLTAR AO MENU INICIAL',
-                    icone: Icons.home_rounded,
-                    onPressed: () => _voltarAoMenu(context),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min, // Mantém os botões justos
+                    children: [
+                      // NOVO BOTÃO: Continuar Jogando
+                      AppButton(
+                        texto: 'CONTINUAR JOGANDO',
+                        icone: Icons.play_arrow_rounded,
+                        onPressed: () => _continuarJogando(context),
+                      ),
+                      const SizedBox(height: 12), // Espaço entre os botões
+                      // BOTÃO ANTIGO: Voltar ao Menu
+                      AppButton(
+                        texto: 'VOLTAR AO MENU INICIAL',
+                        icone: Icons.home_rounded,
+                        onPressed: () => _voltarAoMenu(context),
+                      ),
+                    ],
                   ),
                 ),
               ),

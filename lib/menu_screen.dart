@@ -952,6 +952,9 @@ Widget _anuncioPlayStore(BuildContext context) {
 Widget _conteudoCentral(BuildContext context) {
     // Aumentamos os tamanhos para acomodar textos maiores
     final larguraBotao = MediaQuery.of(context).size.width > 500 ? 300.0 : 260.0;
+    
+    // Calcula o espaço disponível na tela
+    final alturaTela = MediaQuery.of(context).size.height;
 
     return Center(
       child: SingleChildScrollView(
@@ -962,21 +965,31 @@ Widget _conteudoCentral(BuildContext context) {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Image.asset(
-              'assets/titulo.png',
-              height: 160,
-              fit: BoxFit.contain,
-              errorBuilder: (_, error, stackTrace) {
-                return const Icon(
-                  Icons.school_rounded,
-                  size: 120,
-                  color: Colors.blueAccent,
-                );
-              },
+            // LOGOTIPO DINÂMICO
+            // A imagem agora tentará ocupar até 40% da altura da tela (se houver espaço)
+            // mas nunca ficará maior que 350 pixels nem menor que 150 pixels.
+            ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight: 150,
+                maxHeight: 350,
+              ),
+              child: Image.asset(
+                'assets/titulo.png',
+                height: alturaTela * 0.4, 
+                fit: BoxFit.contain, // contain garante que não corta as bordas da logo
+                errorBuilder: (_, error, stackTrace) {
+                  return Icon(
+                    Icons.school_rounded,
+                    size: alturaTela * 0.3,
+                    color: Colors.blueAccent,
+                  );
+                },
+              ),
             ),
             const SizedBox(height: 20),
+            
             _infoAluno(),
-            const SizedBox(height: 55),
+            const SizedBox(height: 40), // Reduzi um pouco o espaçamento para a logo respirar mais
             
             // 1. BOTÃO JOGAR
             AppButton(
@@ -989,7 +1002,7 @@ Widget _conteudoCentral(BuildContext context) {
             ),
             const SizedBox(height: 20),
             
-          // 2. BOTÃO PROVA OFICIAL
+            // 2. BOTÃO PROVA OFICIAL
             if (_exibirProvaOficial) ...[
               AppButton(
                 texto: 'PROVA OFICIAL',
@@ -1025,7 +1038,8 @@ Widget _conteudoCentral(BuildContext context) {
             ),
             const SizedBox(height: 20),
             
-           if (_exibirAreaProfessor) ...[
+            // 4. BOTÃO ÁREA DO PROFESSOR
+            if (_exibirAreaProfessor) ...[
               AppButton(
                 texto: 'ÁREA DO PROFESSOR',
                 largura: larguraBotao,
