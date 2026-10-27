@@ -74,14 +74,27 @@
   <div class="container">
     <h1>Central de Avaliações</h1>
 
-    <!-- LOGIN -->
+  <!-- LOGIN -->
     <div id="loginCard" class="card">
       <h2>Login Administrativo</h2>
+      
+      <div style="background: #eef4ff; border-left: 4px solid var(--azul); padding: 12px; border-radius: 8px; margin-bottom: 18px; color: #24466f; font-size: 14px;">
+        Use seu e-mail e senha para entrar. Caso ainda não tenha acesso liberado,
+        informe também o código de acesso fornecido pela coordenação.
+      </div>
+
       <label for="email">E-mail</label>
       <input id="email" type="email" placeholder="Digite seu e-mail" />
+      
       <label for="senha">Senha</label>
       <input id="senha" type="password" placeholder="Digite sua senha" />
+      
+      <label for="codigoAcesso">Código de acesso (Apenas para novos acessos)</label>
+      <input id="codigoAcesso" type="text" placeholder="Exemplo: OLIMPIADA2026" />
+
       <button onclick="login()">Entrar no Sistema</button>
+      <button class="secondary" onclick="criarContaColaborador()">Criar conta de colaborador</button>
+      
       <div id="loginStatus" class="status"></div>
     </div>
 
@@ -394,21 +407,114 @@
       }
     };
 
-    // LOGIN
+   // ==========================================
+    // LOGIN E CADASTRO ADMINISTRATIVO
+    // ==========================================
+    
+    window.verificarAdminRetorno = async function(user) {
+      if (!user) return false;
+      const { data, error } = await supabase
+        .from("admins")
+        .select("user_id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (error) {
+        mostrarStatus("loginStatus", "Erro ao verificar permissão: " + error.message, "erro");
+        return false;
+      }
+      return !!data;
+    };
+
+    window.usarCodigoDeAcesso = async function(codigo) {
+      const { data, error } = await supabase.rpc("usar_codigo_questoes", { p_codigo: codigo });
+      if (error) {
+        mostrarStatus("loginStatus", "Erro ao validar código: " + error.message, "erro");
+        return false;
+      }
+      return data === true;
+    };
+
+    window.abrirPainel = async function(user) {
+      document.getElementById("loginCard").classList.add("hidden");
+      document.getElementById("appAdmin").classList.remove("hidden");
+      document.getElementById("usuarioLogado").innerText = user.email;
+      
+      registrarCamposLatex();
+      listarQuestoes();
+      window.atualizarListasDeProvas();
+    };
+
     window.login = async function() {
       limparStatus("loginStatus");
       const email = document.getElementById("email").value.trim();
       const senha = document.getElementById("senha").value;
+      const codigo = document.getElementById("codigoAcesso").value.trim();
+
+      if (!email || !senha) return mostrarStatus("loginStatus", "Informe e-mail e senha.", "erro");
+
       const { data, error } = await supabase.auth.signInWithPassword({ email, password: senha });
-      if (error) return mostrarStatus("loginStatus", "Erro no login: " + error.message, "erro");
       
-      document.getElementById("loginCard").classList.add("hidden");
-      document.getElementById("appAdmin").classList.remove("hidden");
-      document.getElementById("usuarioLogado").innerText = data.user.email;
-      registrarCamposLatex();
-      listarQuestoes();
+      if (error) return mostrarStatus("loginStatus", "Erro no login: " + error.message, "erro");
+
+      const jaEhAdmin = await verificarAdminRetorno(data.user);
+
+      if (jaEhAdmin) {
+        return abrirPainel(data.user);
+      }
+
+      if (!codigo) {
+        await supabase.auth.signOut();
+        return mostrarStatus("loginStatus", "Login realizado, mas você não tem permissão de Admin. Informe o código de acesso.", "aviso");
+      }
+
+      const liberou = await usarCodigoDeAcesso(codigo);
+
+      if (!liberou) {
+        await supabase.auth.signOut();
+        return mostrarStatus("loginStatus", "Código inválido, expirado ou sem usos disponíveis.", "erro");
+      }
+
+      abrirPainel(data.user);
     };
-    window.logout = async function() { await supabase.auth.signOut(); location.reload(); };
+
+    window.criarContaColaborador = async function() {
+      limparStatus("loginStatus");
+      const email = document.getElementById("email").value.trim();
+      const senha = document.getElementById("senha").value;
+      const codigo = document.getElementById("codigoAcesso").value.trim();
+
+      if (!email || !senha || !codigo) {
+        return mostrarStatus("loginStatus", "Informe e-mail, senha e código de acesso para se cadastrar.", "erro");
+      }
+
+      if (senha.length < 8) {
+        return mostrarStatus("loginStatus", "A senha precisa ter pelo menos 8 caracteres.", "erro");
+      }
+
+      const { data, error } = await supabase.auth.signUp({ email, password: senha });
+
+      if (error) return mostrarStatus("loginStatus", "Erro ao criar conta: " + error.message, "erro");
+
+      if (!data.session) {
+        return mostrarStatus("loginStatus", "Conta criada. Confirme o e-mail, faça login e use o código de acesso.", "aviso");
+      }
+
+      const liberou = await usarCodigoDeAcesso(codigo);
+
+      if (!liberou) {
+        await supabase.auth.signOut();
+        return mostrarStatus("loginStatus", "Conta criada, mas o código de acesso é inválido ou expirou.", "erro");
+      }
+
+      mostrarStatus("loginStatus", "Conta criada e acesso liberado com sucesso!", "ok");
+      abrirPainel(data.user);
+    };
+
+    window.logout = async function() { 
+      await supabase.auth.signOut(); 
+      location.reload(); 
+    };
 
     // ==========================================
     // LÓGICA DE IMAGENS & LATEX 
@@ -1014,17 +1120,18 @@
       }
     };
 
-    // INIT
-    supabase.auth.getUser().then(({ data }) => { 
+  // ==========================================
+    // INIT (Lógica de inicialização segura)
+    // ==========================================
+    supabase.auth.getUser().then(async ({ data }) => { 
       if (data.user) { 
-        document.getElementById("loginCard").classList.add("hidden"); 
-        document.getElementById("appAdmin").classList.remove("hidden"); 
-        document.getElementById("usuarioLogado").innerText = data.user.email; 
-        registrarCamposLatex();
-        listarQuestoes(); 
-        
-        // Carrega a lista de provas para todas as secções logo no início
-        window.atualizarListasDeProvas();
+        const admin = await verificarAdminRetorno(data.user);
+        if (admin) {
+          abrirPainel(data.user);
+        } else {
+          // Desloga automaticamente quem tinha conta mas perdeu as permissões
+          await supabase.auth.signOut();
+        }
       } 
     });
   </script>

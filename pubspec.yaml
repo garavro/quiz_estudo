@@ -66,6 +66,7 @@ flutter:
 
   # Preste MUITA atenção nos espaços antes das palavras aqui! O YAML é sensível a espaços.
   assets:
+    - assets/medidor_dificuldades.png
     - assets/titulo.png
     - assets/logo.png
 

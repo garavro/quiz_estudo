@@ -165,11 +165,11 @@ class _DificuldadeScreenState extends State<DificuldadeScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(
-                      Icons.extension_rounded,
-                      size: 72,
-                      color: colorScheme.primary,
-                    ),
+                Image.asset(
+  'assets/medidor_dificuldades.png',
+  height: 120, // Ajuste a altura conforme preferir
+  fit: BoxFit.contain,
+),
                     const SizedBox(height: 12),
                     Text(
                       'Escolha a dificuldade',

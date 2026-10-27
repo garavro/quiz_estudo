@@ -18,10 +18,13 @@ class _PlacarScreenState extends State<PlacarScreen> {
   bool _carregando = true;
   List<dynamic> _ranking = [];
 
-  // Novas variáveis para o usuário logado e o limite do ranking
+  // Variáveis para o limite do ranking
   int _limiteRanking = 10;
-  int? _minhaPosicao;
-  int? _meusPontos;
+  
+  // Variáveis para o usuário logado (Fixas de acordo com o nível)
+  int? _minhaPosicaoFixa;
+  int? _meusPontosFixos;
+  String? _meuNivelFixo; // NOVO: Guarda o nível real do utilizador
 
   Timer? _timerAtualizacao;
 
@@ -84,25 +87,28 @@ class _PlacarScreenState extends State<PlacarScreen> {
       final filtro = _filtros[_filtroSelecionado];
       final supabase = Supabase.instance.client;
 
-      // 1. Constrói a busca base (Filtros DEVEM vir antes do order)
+      // ==========================================
+      // 1. BUSCA O RANKING DA LISTA (Depende do filtro)
+      // ==========================================
       var queryRanking = supabase.from('perfis').select();
 
       if (filtro.nivel != null) {
         queryRanking = queryRanking.eq('nivel_atual', filtro.nivel!);
       }
 
-      // Aplica a ordem de quem tem mais pontos
       var queryOrdenada = queryRanking.order('pontuacao_total', ascending: false);
 
-      // NOVO: Se _limiteRanking for 0 (Geral), não aplica o .limit()
       final rankingData = _limiteRanking == 0 
           ? await queryOrdenada 
           : await queryOrdenada.limit(_limiteRanking);
 
-      // 2. Busca os dados do usuário atual (minha posição e pontos)
+      // ==========================================
+      // 2. BUSCA OS DADOS DO UTILIZADOR (Fixo pelo seu nível real)
+      // ==========================================
       final userId = supabase.auth.currentUser?.id;
-      int? minhaPos;
-      int? meusPts;
+      int? minhaPosFixa;
+      int? meusPtsFixos;
+      String? meuNivelReal;
 
       if (userId != null) {
         final meuPerfil = await supabase
@@ -112,17 +118,18 @@ class _PlacarScreenState extends State<PlacarScreen> {
             .maybeSingle();
 
         if (meuPerfil != null) {
-          meusPts = _lerPontuacao(meuPerfil['pontuacao_total']);
+          meusPtsFixos = _lerPontuacao(meuPerfil['pontuacao_total']);
+          meuNivelReal = meuPerfil['nivel_atual'] as String?;
 
-          // 3. Calcula a posição verificando quantas pessoas têm pontuação maior
-          var queryPosicao = supabase.from('perfis').select('id');
+          // Calcula a posição SEMPRE baseada no nível real do utilizador, ignorando o filtro da tela
+          var queryPosicaoFixa = supabase.from('perfis').select('id');
 
-          if (filtro.nivel != null) {
-            queryPosicao = queryPosicao.eq('nivel_atual', filtro.nivel!);
+          if (meuNivelReal != null && meuNivelReal.isNotEmpty) {
+            queryPosicaoFixa = queryPosicaoFixa.eq('nivel_atual', meuNivelReal);
           }
 
-          final List<dynamic> pessoasNaFrente = await queryPosicao.gt('pontuacao_total', meusPts);
-          minhaPos = pessoasNaFrente.length + 1;
+          final List<dynamic> pessoasNaFrente = await queryPosicaoFixa.gt('pontuacao_total', meusPtsFixos);
+          minhaPosFixa = pessoasNaFrente.length + 1;
         }
       }
 
@@ -130,8 +137,9 @@ class _PlacarScreenState extends State<PlacarScreen> {
 
       setState(() {
         _ranking = rankingData;
-        _minhaPosicao = minhaPos;
-        _meusPontos = meusPts;
+        _minhaPosicaoFixa = minhaPosFixa;
+        _meusPontosFixos = meusPtsFixos;
+        _meuNivelFixo = meuNivelReal;
         _carregando = false;
       });
     } catch (e) {
@@ -346,7 +354,6 @@ class _PlacarScreenState extends State<PlacarScreen> {
           ),
           const SizedBox(width: 12),
           
-          // NOVO: Filtro "Geral" que define o limite como 0 (sem limite)
           ChoiceChip(
             label: const Text('Geral'),
             selected: _limiteRanking == 0,
@@ -396,7 +403,7 @@ class _PlacarScreenState extends State<PlacarScreen> {
           const SizedBox(height: 20),
           _seletorRanking(),
           const SizedBox(height: 16),
-          _seletorLimite(), // Adicionado o seletor Top10/20 aqui
+          _seletorLimite(),
         ],
       ),
     );
@@ -446,7 +453,6 @@ class _PlacarScreenState extends State<PlacarScreen> {
   ) {
     final posicao = index + 1;
 
-    // Ajustado para priorizar o apelido, se existir
     final nome = _lerTexto(
       jogador['apelido'] ?? jogador['nome_completo'],
       padrao: 'Jogador Anônimo',
@@ -602,12 +608,18 @@ class _PlacarScreenState extends State<PlacarScreen> {
     );
   }
 
-  // Barra fixa exibindo o ranqueamento do usuário atual
+  // ==========================================
+  // BARRA FIXA ATUALIZADA (De acordo com o mockup)
+  // ==========================================
   Widget? _barraMeuDesempenho() {
-    if (_meusPontos == null || _minhaPosicao == null) return null;
+    if (_meusPontosFixos == null || _minhaPosicaoFixa == null) return null;
+    
+    // Transforma "nivel_3" em "Nível III"
+    final nomeNivelFixo = _nomeNivel(_meuNivelFixo);
 
     return Container(
-padding: const EdgeInsets.only(left: 85, right: 20, top: 16, bottom: 16),
+      // Padding ajustado para não encostar o avatar na margem
+      padding: const EdgeInsets.only(left: 80, right: 20, top: 12, bottom: 12),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surfaceContainerHighest,
         boxShadow: const [
@@ -621,25 +633,27 @@ padding: const EdgeInsets.only(left: 85, right: 20, top: 16, bottom: 16),
       child: SafeArea(
         child: Row(
           children: [
+            // Avatar UNEMAT (Opcional, pode usar Image.asset se tiver a logo salva)
+            // Caso contrário, deixamos apenas a bola azul da posição
             CircleAvatar(
-              radius: 22,
+              radius: 26,
               backgroundColor: Colors.blueAccent,
               child: Text(
-                '$_minhaPosicaoº',
+                '$_minhaPosicaoFixaº',
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
-                  fontSize: 16,
+                  fontSize: 18,
                 ),
               ),
             ),
-            const SizedBox(width: 16),
-            const Expanded(
+            const SizedBox(width: 14),
+            Expanded(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
+                  const Text(
                     'Seu Desempenho',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
@@ -647,17 +661,24 @@ padding: const EdgeInsets.only(left: 85, right: 20, top: 16, bottom: 16),
                     ),
                   ),
                   Text(
-                    'Sua posição na categoria selecionada',
+                    'De acordo com seu nível', // Subtítulo atualizado
                     style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey,
+                      fontSize: 13,
+                      color: Colors.grey.shade700,
+                    ),
+                  ),
+                  Text(
+                    nomeNivelFixo, // Terceira linha com o nível real
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey.shade600,
                     ),
                   ),
                 ],
               ),
             ),
             Text(
-              '$_meusPontos pts',
+              '$_meusPontosFixos pts',
               style: const TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 18,
@@ -699,12 +720,10 @@ padding: const EdgeInsets.only(left: 85, right: 20, top: 16, bottom: 16),
               onRefresh: () => _buscarRanking(),
               child: _listaRanking(context),
             ),
-      // Adiciona o Bottom Navigation Bar se os dados estiverem disponíveis
       bottomNavigationBar: _barraMeuDesempenho(), 
     );
   }
 }
-
 class _FiltroRanking {
   final String titulo;
   final String subtitulo;
