@@ -1,6 +1,6 @@
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:flutter_windowmanager/flutter_windowmanager.dart';
+import 'package:flutter_windowmanager_plus/flutter_windowmanager_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -57,12 +57,20 @@ class _JogarScreenState extends State<JogarScreen>
   bool _finalizando = false;
   bool _antiColaAcionado = false;
 
+  // Controle do nível de zoom
+  double _escalaZoom = 1.2;
+  double _escalaAnterior = 1.2;
+
   // ==== VARIÁVEIS DE ACESSIBILIDADE E RASCUNHO ====
   bool _modoZoom = false; 
   bool _modoRascunho = false;
   bool _modoBorracha = false;
   bool _fundoBrancoAtivo = false;
   Color _corRascunhoAtual = Colors.blueAccent;
+
+  // ADICIONA ESTAS DUAS LINHAS:
+  final ScrollController _zoomVerticalController = ScrollController();
+  final ScrollController _zoomHorizontalController = ScrollController();
   
   // Sistema de Slides / Caderno de Rascunho
   List<List<PontoRascunho>> _paginasRascunho = [[]];
@@ -97,7 +105,7 @@ class _JogarScreenState extends State<JogarScreen>
     if (!Platform.isAndroid) return;
 
     try {
-      await FlutterWindowManager.addFlags(FlutterWindowManager.FLAG_SECURE);
+      await FlutterWindowManagerPlus.addFlags(FlutterWindowManagerPlus.FLAG_SECURE);
     } catch (e) {
       debugPrint("Erro ao ativar Anti-Print: $e");
     }
@@ -108,7 +116,7 @@ class _JogarScreenState extends State<JogarScreen>
     if (!Platform.isAndroid) return;
 
     try {
-      await FlutterWindowManager.clearFlags(FlutterWindowManager.FLAG_SECURE);
+      await FlutterWindowManagerPlus.clearFlags(FlutterWindowManagerPlus.FLAG_SECURE);
     } catch (e) {
       debugPrint("Erro ao desativar Anti-Print: $e");
     }
@@ -118,6 +126,11 @@ class _JogarScreenState extends State<JogarScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _desativarAntiPrint(); 
+
+   // ADICIONA ESTAS DUAS LINHAS:
+    _zoomVerticalController.dispose();
+    _zoomHorizontalController.dispose();
+
     super.dispose();
   }
 
@@ -450,7 +463,7 @@ class _JogarScreenState extends State<JogarScreen>
 
   // ============================= //
 
-  Widget _imagemQuestao({bool emZoom = false}) {
+ Widget _imagemQuestao({bool emZoom = false, double escala = 1.0}) {
     final urlCompleta = _resolverImagemUrl(_imagemUrl);
 
     if (urlCompleta == null) {
@@ -460,6 +473,8 @@ class _JogarScreenState extends State<JogarScreen>
     final widgetImagem = Image.network(
       urlCompleta,
       fit: BoxFit.contain,
+      // A largura da imagem cresce de acordo com a escala de zoom
+      width: emZoom ? (MediaQuery.of(context).size.width * 0.75) * escala : null,
       loadingBuilder: (context, child, loadingProgress) {
         if (loadingProgress == null) return child;
         return const SizedBox(
@@ -498,7 +513,6 @@ class _JogarScreenState extends State<JogarScreen>
       },
     );
 
-    // Quando em modo zoom, remove a trava de maxHeight: 260 e o ClipRRect interno
     if (emZoom) {
       return Column(
         children: [
@@ -623,21 +637,6 @@ class _JogarScreenState extends State<JogarScreen>
           centerTitle: true,
           automaticallyImplyLeading: !_finalizando,
           actions: [
-            // BOTÃO ZOOM (ACESSIBILIDADE)
-            IconButton(
-              icon: Icon(
-                _modoZoom ? Icons.zoom_out_map : Icons.zoom_in,
-                color: _modoZoom ? Colors.blueAccent : null,
-                size: 30,
-              ),
-              tooltip: 'Acessibilidade (Zoom)',
-              onPressed: () {
-                setState(() {
-                  _modoZoom = !_modoZoom;
-                  if (_modoZoom) _modoRascunho = false; 
-                });
-              },
-            ),
             // BOTÃO RASCUNHO
             IconButton(
               icon: Icon(
@@ -675,66 +674,165 @@ class _JogarScreenState extends State<JogarScreen>
                         _barraProgresso(),
                         const SizedBox(height: 25),
                         
-                     // BLOCO DA PERGUNTA COM OPÇÃO DE ZOOM
-                        _modoZoom 
-                        ? Container(
-                            height: 420, // Aumentado para proporcionar melhor área de navegação
-                            decoration: BoxDecoration(
-                              border: Border.all(color: Colors.blueAccent, width: 2),
-                              borderRadius: BorderRadius.circular(18),
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(16),
-                              child: InteractiveViewer(
-                                panEnabled: true,
-                                boundaryMargin: const EdgeInsets.all(100),
-                                minScale: 0.8,
-                                maxScale: 4.0,
-                                child: SingleChildScrollView(
-                                  padding: const EdgeInsets.all(12),
-                                  child: Column(
-                                    children: [
-                                      Card(
-                                        elevation: 0,
-                                        color: Colors.transparent,
-                                        child: Padding(
-                                          padding: const EdgeInsets.all(12),
-                                          child: MathText(
-                                            _perguntaAtual,
-                                            fontSize: 26,
-                                            fontWeight: FontWeight.bold,
-                                            corTexto: Theme.of(context).colorScheme.onSurface,
-                                            textAlign: TextAlign.justify,
+                    // BLOCO DA PERGUNTA COM OPÇÃO DE ZOOM E ROLAGEM INDEPENDENTE
+                        Stack(
+                          children: [
+                            _modoZoom 
+                            ? Container(
+                                height: 420,
+                                decoration: BoxDecoration(
+                                  border: Border.all(color: Colors.blueAccent, width: 2),
+                                  borderRadius: BorderRadius.circular(18),
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(16),
+                                  // Barra de rolagem Horizontal (Fixa no rodapé)
+                                  child: Scrollbar(
+                                    controller: _zoomHorizontalController,
+                                    thumbVisibility: true,
+                                    thickness: 8,
+                                    notificationPredicate: (notif) => notif.depth == 0,
+                                    child: SingleChildScrollView(
+                                      controller: _zoomHorizontalController,
+                                      scrollDirection: Axis.horizontal,
+                                      child: SizedBox(
+                                        height: 420,
+                                        // Barra de rolagem Vertical (Fixa na lateral direita)
+                                        child: Scrollbar(
+                                          controller: _zoomVerticalController,
+                                          thumbVisibility: true,
+                                          thickness: 8,
+                                          notificationPredicate: (notif) => notif.depth == 0,
+                                          child: SingleChildScrollView(
+                                            controller: _zoomVerticalController,
+                                            scrollDirection: Axis.vertical,
+                                            child: GestureDetector(
+                                              // Permite Zoom com gesto de pinça (dois dedos)
+                                              onScaleStart: (details) {
+                                                _escalaAnterior = _escalaZoom;
+                                              },
+                                              onScaleUpdate: (details) {
+                                                setState(() {
+                                                  _escalaZoom = (_escalaAnterior * details.scale).clamp(1.0, 3.0);
+                                                });
+                                              },
+                                              child: Padding(
+                                                padding: const EdgeInsets.all(12),
+                                                child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
+                                                    SizedBox(
+                                                      width: (MediaQuery.of(context).size.width * 0.8) * _escalaZoom,
+                                                      child: Card(
+                                                        elevation: 0,
+                                                        color: Colors.transparent,
+                                                        child: Padding(
+                                                          padding: const EdgeInsets.only(left: 12, top: 40, bottom: 35, right: 40),
+                                                          child: MathText(
+                                                            _perguntaAtual,
+                                                            fontSize: 22 * _escalaZoom,
+                                                            fontWeight: FontWeight.bold,
+                                                            corTexto: Theme.of(context).colorScheme.onSurface,
+                                                            textAlign: TextAlign.justify,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    _imagemQuestao(emZoom: true, escala: _escalaZoom),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
                                           ),
                                         ),
                                       ),
-                                      _imagemQuestao(emZoom: true), // Passa emZoom: true aqui
+                                    ),
+                                  ),
+                                ),
+                              )
+                            : Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  Card(
+                                    elevation: 2,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                                    child: Padding(
+                                      padding: const EdgeInsets.only(left: 20, top: 20, bottom: 35, right: 40),
+                                      child: MathText(
+                                        _perguntaAtual,
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.bold,
+                                        corTexto: Theme.of(context).colorScheme.onSurface,
+                                        textAlign: TextAlign.justify,
+                                      ),
+                                    ),
+                                  ),
+                                  _imagemQuestao(emZoom: false),
+                                ],
+                              ),
+
+                            // CONTROLES DE ZOOM (+ / - / %) NO CANTO SUPERIOR ESQUERDO
+                            if (_modoZoom)
+                              Positioned(
+                                top: 8,
+                                left: 8,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(context).colorScheme.surface.withOpacity(0.95),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(color: Colors.blueAccent.shade100),
+                                    boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      IconButton(
+                                        icon: const Icon(Icons.remove, size: 18),
+                                        padding: EdgeInsets.zero,
+                                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                                        onPressed: _escalaZoom > 1.0
+                                            ? () => setState(() => _escalaZoom = (_escalaZoom - 0.2).clamp(1.0, 3.0))
+                                            : null,
+                                      ),
+                                      Text(
+                                        '${(_escalaZoom * 100).round()}%',
+                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(Icons.add, size: 18),
+                                        padding: EdgeInsets.zero,
+                                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                                        onPressed: _escalaZoom < 3.0
+                                            ? () => setState(() => _escalaZoom = (_escalaZoom + 0.2).clamp(1.0, 3.0))
+                                            : null,
+                                      ),
                                     ],
                                   ),
                                 ),
                               ),
-                            ),
-                          )
-                        : Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Card(
-                                elevation: 2,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(20),
-                                  child: MathText(
-                                    _perguntaAtual,
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.bold,
-                                    corTexto: Theme.of(context).colorScheme.onSurface,
-                                    textAlign: TextAlign.justify,
-                                  ),
+
+                            // LUPA NO CANTO INFERIOR DIREITO
+                            Positioned(
+                              bottom: _modoZoom ? 12 : (_resolverImagemUrl(_imagemUrl) != null ? 25 : 5),
+                              right: 8,
+                              child: IconButton(
+                                icon: Icon(
+                                  _modoZoom ? Icons.zoom_out_map : Icons.zoom_in,
+                                  color: _modoZoom ? Colors.blueAccent : Colors.black87,
+                                  size: 30,
                                 ),
+                                tooltip: 'Acessibilidade (Zoom)',
+                                onPressed: () {
+                                  setState(() {
+                                    _modoZoom = !_modoZoom;
+                                    if (_modoZoom) _modoRascunho = false; 
+                                  });
+                                },
                               ),
-                              _imagemQuestao(emZoom: false),
-                            ],
-                          ),
+                            ),
+                          ],
+                        ),
                         const SizedBox(height: 5),
                         
                         ..._alternativas.map(_botaoAlternativa),
