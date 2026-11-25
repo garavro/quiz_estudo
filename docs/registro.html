@@ -8,7 +8,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body class="bg-gray-100 h-screen flex items-center justify-center font-sans">
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4 font-sans">
     
     <div class="max-w-xl w-full bg-white p-8 rounded-xl shadow-lg border border-gray-200">
         <div class="text-center mb-8">
@@ -36,12 +36,23 @@
                 <button onclick="fazerLogout()" class="text-sm font-bold text-red-600 hover:text-red-800">Sair</button>
             </div>
 
-            <div class="mb-6">
+            <div class="mb-4">
                 <label class="block text-gray-700 text-sm font-bold mb-2">O que deseja importar?</label>
                 <select id="tipoImportacao" class="w-full p-3 border rounded-lg font-semibold bg-gray-50" onchange="atualizarDicas()">
                     <option value="alunos">🎓 Planilha de Alunos</option>
                     <option value="professores">👨‍🏫 Planilha de Professores</option>
                 </select>
+            </div>
+
+            <!-- BOTÃO DE DOWNLOAD DA PLANILHA MODELO -->
+            <div class="mb-6">
+                <button type="button" id="btnBaixarModelo" onclick="baixarPlanilhaModelo()" class="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-300 font-bold py-2.5 px-4 rounded-lg transition flex items-center justify-center gap-2 text-sm">
+                    <span>📥 Baixar Planilha Modelo (Alunos .csv)</span>
+                </button>
+                <div id="avisoDocumento" class="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 space-y-1">
+                    <p><strong>Coluna <code>documento</code>:</strong> informe um CPF válido do aluno; caso não possua CPF, preencha com um <strong>e-mail acadêmico</strong> válido.</p>
+                    <p><strong>Coluna <code>nivel</code>:</strong> preencha com apenas um nível por aluno (<code>nivel_1</code>, <code>nivel_2</code>, <code>nivel_3</code> ou <code>nivel_4</code>). Apague a linha de exemplo antes de enviar.</p>
+                </div>
             </div>
 
             <div class="border-2 border-dashed border-gray-300 rounded-lg p-10 text-center mb-6 hover:bg-gray-50 transition">
@@ -50,23 +61,28 @@
                     <svg class="w-12 h-12 text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                     <span class="text-blue-600 font-semibold" id="fileName">Clique para selecionar a Planilha CSV</span>
                     <span class="text-gray-500 text-xs mt-2 font-bold" id="dicaColunas">
-                        <!-- ATUALIZADO: Coluna 'municipio' adicionada às instruções -->
-                        Colunas: nome, data_nascimento, documento, rede, municipio, escola, serie, turma, turno, email_professor
+                        Colunas: nome, data_nascimento, documento, rede, municipio, escola, nivel, turma, turno
                     </span>
                 </label>
             </div>
 
-            <button onclick="processarCSV()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg">ENVIAR DADOS</button>
+            <button onclick="processarCSV()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg">VALIDAR E ENVIAR DADOS</button>
             
             <div id="resultado" class="hidden mt-4 p-4 rounded-lg text-center text-sm font-medium"></div>
-            <div id="logDetalhado" class="mt-4 hidden p-4 bg-red-50 text-red-700 text-xs text-left rounded-lg border border-red-200 max-h-40 overflow-y-auto"></div>
+            <div id="logDetalhado" class="mt-4 hidden p-4 bg-red-50 text-red-700 text-xs text-left rounded-lg border border-red-200 max-h-48 overflow-y-auto space-y-1"></div>
+
+            <!-- VALIDADOR RÁPIDO AVULSO -->
+            <div class="mt-8 pt-6 border-t border-gray-200">
+                <label class="block text-gray-700 text-xs font-bold uppercase tracking-wider mb-2">Verificação Rápida (CPF ou E-mail)</label>
+                <div class="flex gap-2">
+                    <input type="text" id="campoTesteRapido" oninput="testarDocumentoRapido()" placeholder="Digite um CPF ou e-mail para testar o formato..." class="flex-1 p-2.5 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <p id="feedbackTesteRapido" class="text-xs mt-2 font-semibold hidden"></p>
+            </div>
         </div>
     </div>
 
     <script>
-        // ==========================================
-        // ⚠️ COLOQUE AQUI SUAS CHAVES ⚠️
-        // ==========================================
         const SUPABASE_URL = 'https://ojkkstibwifhbplakjfw.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9qa2tzdGlid2lmaGJwbGFramZ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDMwODcxMDAsImV4cCI6MjA1ODY2MzEwMH0.lbLt4r03I4-kxQ0aNb9BFPDOnu9XIbay0zApus2Wrsw';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -75,15 +91,147 @@
             if (session) alternarTelas(true, session.user.email);
         });
 
+        // ==========================================
+        // FUNÇÕES DE VALIDAÇÃO DE CPF E E-MAIL
+        // ==========================================
+        function validarCPF(valor) {
+            if (!valor) return false;
+            const cpf = valor.toString().replace(/\D/g, '');
+            if (cpf.length !== 11) return false;
+
+            // Bloqueia sequências de dígitos repetidos (ex: 00000000000, 11111111111)
+            if (/^(\d)\1{10}$/.test(cpf)) return false;
+
+            let soma = 0;
+            for (let i = 0; i < 9; i++) {
+                soma += parseInt(cpf.charAt(i), 10) * (10 - i);
+            }
+            let resto = (soma * 10) % 11;
+            if (resto === 10 || resto === 11) resto = 0;
+            if (resto !== parseInt(cpf.charAt(9), 10)) return false;
+
+            soma = 0;
+            for (let i = 0; i < 10; i++) {
+                soma += parseInt(cpf.charAt(i), 10) * (11 - i);
+            }
+            resto = (soma * 10) % 11;
+            if (resto === 10 || resto === 11) resto = 0;
+            if (resto !== parseInt(cpf.charAt(10), 10)) return false;
+
+            return true;
+        }
+
+        function validarEmail(email) {
+            if (!email) return false;
+            const limpo = email.toString().trim();
+            if (limpo.length > 254 || limpo.includes(' ')) return false;
+
+            const regex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
+            if (!regex.test(limpo)) return false;
+
+            const dominio = limpo.split('@')[1];
+            const tld = dominio.split('.').pop();
+            return Boolean(tld && tld.length >= 2 && !/^\d+$/.test(tld));
+        }
+
+        function validarDocumentoAluno(rawDoc) {
+            const doc = (rawDoc || '').toString().trim();
+            if (!doc) {
+                return { valido: false, motivo: 'Documento vazio (informe CPF ou e-mail).' };
+            }
+
+            if (doc.includes('@')) {
+                if (validarEmail(doc)) {
+                    return { valido: true, tipo: 'E-mail', valorNormalizado: doc.toLowerCase() };
+                }
+                return { valido: false, motivo: `Formato de e-mail inválido ("${doc}").` };
+            }
+
+            if (/[a-zA-Z]/.test(doc)) {
+                return { valido: false, motivo: `Documento inválido ("${doc}"): contém letras, mas não é um e-mail válido.` };
+            }
+
+            const apenasDigitos = doc.replace(/\D/g, '');
+            if (apenasDigitos.length !== 11) {
+                return { valido: false, motivo: `CPF inválido ("${doc}"): deve conter 11 dígitos (encontrados ${apenasDigitos.length}).` };
+            }
+
+            if (!validarCPF(apenasDigitos)) {
+                return { valido: false, motivo: `CPF matematicamente inválido ("${doc}"): dígitos verificadores não conferem.` };
+            }
+
+            return { valido: true, tipo: 'CPF', valorNormalizado: apenasDigitos };
+        }
+
+        function testarDocumentoRapido() {
+            const valor = document.getElementById('campoTesteRapido').value.trim();
+            const feedback = document.getElementById('feedbackTesteRapido');
+
+            if (!valor) {
+                feedback.classList.add('hidden');
+                return;
+            }
+
+            const res = validarDocumentoAluno(valor);
+            feedback.classList.remove('hidden', 'text-green-600', 'text-red-600');
+
+            if (res.valido) {
+                feedback.classList.add('text-green-600');
+                feedback.textContent = `✅ ${res.tipo} válido! Valor normalizado: ${res.valorNormalizado}`;
+            } else {
+                feedback.classList.add('text-red-600');
+                feedback.textContent = `❌ ${res.motivo}`;
+            }
+        }
+
+        // ==========================================
+        // INTERFACE E PLANILHA MODELO
+        // ==========================================
         function atualizarDicas() {
             const tipo = document.getElementById('tipoImportacao').value;
             const dica = document.getElementById('dicaColunas');
+            const btnModelo = document.getElementById('btnBaixarModelo');
+            const avisoDoc = document.getElementById('avisoDocumento');
+
             if (tipo === 'alunos') {
-                // ATUALIZADO: Coluna 'municipio' adicionada
-                dica.textContent = 'Colunas: nome, data_nascimento, documento, rede, municipio, escola, serie, turma, turno, email_professor';
+                dica.textContent = 'Colunas: nome, data_nascimento, documento, rede, municipio, escola, nivel, turma, turno';
+                btnModelo.innerHTML = '<span>📥 Baixar Planilha Modelo (Alunos .csv)</span>';
+                avisoDoc.classList.remove('hidden');
             } else {
-                dica.textContent = 'Colunas: nome, email'; // Professores simplificados!
+                dica.textContent = 'Colunas: nome, email';
+                btnModelo.innerHTML = '<span>📥 Baixar Planilha Modelo (Professores .csv)</span>';
+                avisoDoc.classList.add('hidden');
             }
+        }
+
+        function baixarPlanilhaModelo() {
+            const tipo = document.getElementById('tipoImportacao').value;
+            let conteudoCSV = '';
+            let nomeArquivo = '';
+
+            if (tipo === 'alunos') {
+                const cabecalho = 'nome;data_nascimento;documento;rede;municipio;escola;nivel;turma;turno';
+                const linhaExemplo = 'João da Silva (Exemplo);15/05/2010;12345678909 (ou aluno@escola.edu.br se não tiver CPF);Estadual;Barra do Bugres;E. E. Exemplo;nivel_4,nivel_3,nivel_2,nivel_1;A;Matutino';
+                conteudoCSV = `${cabecalho}\n${linhaExemplo}\n`;
+                nomeArquivo = 'modelo_importacao_alunos.csv';
+            } else {
+                const cabecalho = 'nome;email';
+                const linhaExemplo = 'Maria Oliveira (Exemplo);maria.professora@escola.edu.br';
+                conteudoCSV = `${cabecalho}\n${linhaExemplo}\n`;
+                nomeArquivo = 'modelo_importacao_professores.csv';
+            }
+
+            const bom = '\uFEFF';
+            const blob = new Blob([bom + conteudoCSV], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', nomeArquivo);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
         }
 
         async function fazerLogin() {
@@ -113,7 +261,7 @@
             if (!dataString) return null;
             const partes = dataString.trim().split('/');
             if (partes.length === 3) return `${partes[2]}-${partes[1]}-${partes[0]}`;
-            return dataString;
+            return dataString.trim();
         }
 
         async function processarCSV() {
@@ -121,17 +269,18 @@
             const tipo = document.getElementById('tipoImportacao').value;
 
             if (fileInput.files.length === 0) { mostrarMensagem('Selecione um CSV.', 'error'); return; }
-            mostrarMensagem('A analisar planilha...', 'info');
+            mostrarMensagem('A validar planilha...', 'info');
             document.getElementById('logDetalhado').classList.add('hidden'); 
 
             Papa.parse(fileInput.files[0], {
-                header: true, skipEmptyLines: true,
+                header: true,
+                skipEmptyLines: true,
+                transformHeader: (header) => header.trim(),
                 complete: async function(results) {
                     const colunasLidas = results.meta.fields || [];
                     
-                    // ATUALIZADO: Coluna 'municipio' incluída nas colunas exigidas
                     const colunasExigidas = tipo === 'alunos' 
-                        ? ['nome', 'data_nascimento', 'documento', 'rede', 'municipio', 'escola', 'serie', 'turma', 'turno', 'email_professor']
+                        ? ['nome', 'data_nascimento', 'documento', 'rede', 'municipio', 'escola', 'nivel', 'turma', 'turno']
                         : ['nome', 'email'];
                     
                     const colunasFaltando = colunasExigidas.filter(col => !colunasLidas.includes(col));
@@ -143,50 +292,72 @@
                         return;
                     }
 
-                    mostrarMensagem(`A enviar dados para o servidor...`, 'info');
+                    mostrarMensagem(`A validar e enviar dados para o servidor...`, 'info');
                     const dados = results.data;
                     let sucessos = 0, falhas = 0, listaErros = [];
 
-                    for (const linha of dados) {
+                    for (let i = 0; i < dados.length; i++) {
+                        const linha = dados[i];
+                        const numeroLinha = i + 2; // +1 do cabeçalho e +1 do índice 0
+
                         try {
-                            let erroAoInserir;
                             if (tipo === 'alunos') {
+                                const nome = (linha.nome || '').trim();
+                                if (!nome || nome.includes('(Exemplo)')) {
+                                    throw new Error('Nome vazio ou linha de exemplo não removida.');
+                                }
+
+                                const validacaoDoc = validarDocumentoAluno(linha.documento);
+                                if (!validacaoDoc.valido) {
+                                    throw new Error(validacaoDoc.motivo);
+                                }
+
                                 const { error } = await supabaseClient.from('alunos_oficiais').insert({
-                                    nome: linha.nome, 
+                                    nome: nome,
                                     data_nascimento: formatarData(linha.data_nascimento),
-                                    documento: linha.documento, 
-                                    rede: linha.rede,
-                                    municipio: linha.municipio, // NOVA INSERÇÃO
-                                    escola: linha.escola, 
-                                    serie: linha.serie,
-                                    turma: linha.turma, // Ex: "A"
-                                    turno: linha.turno, // Ex: "Matutino"
-                                    email_professor: linha.email_professor // O Elo de ligação com o professor!
+                                    documento: validacaoDoc.valorNormalizado,
+                                    rede: linha.rede?.trim(),
+                                    municipio: linha.municipio?.trim(),
+                                    escola: linha.escola?.trim(),
+                                    nivel: linha.nivel?.trim(),
+                                    turma: linha.turma?.trim(),
+                                    turno: linha.turno?.trim(),
+                                    email_professor: null
                                 });
-                                erroAoInserir = error;
+                                if (error) throw error;
                             } else {
+                                const nome = (linha.nome || '').trim();
+                                const emailProf = (linha.email || '').trim().toLowerCase();
+
+                                if (!nome || nome.includes('(Exemplo)')) {
+                                    throw new Error('Nome vazio ou linha de exemplo não removida.');
+                                }
+
+                                if (!validarEmail(emailProf)) {
+                                    throw new Error(`E-mail inválido ("${linha.email || ''}").`);
+                                }
+
                                 const { error } = await supabaseClient.from('professores_aplicadores').insert({
-                                    nome: linha.nome, 
-                                    email: linha.email
+                                    nome: nome,
+                                    email: emailProf
                                 });
-                                erroAoInserir = error;
+                                if (error) throw error;
                             }
 
-                            if (erroAoInserir) throw erroAoInserir;
                             sucessos++;
                         } catch (err) {
                             falhas++;
-                            const identificador = tipo === 'alunos' ? linha.documento : linha.email;
-                            listaErros.push(`Falha em [${identificador}]: ${err.message || JSON.stringify(err)}`);
+                            const identificador = linha.nome || (tipo === 'alunos' ? linha.documento : linha.email) || 'Sem identificação';
+                            listaErros.push(`<strong>Linha ${numeroLinha} [${identificador}]:</strong> ${err.message || JSON.stringify(err)}`);
                         }
                     }
 
                     if (falhas > 0) {
-                        mostrarMensagem(`Importados: ${sucessos} | Falhas: ${falhas}`, 'error');
+                        mostrarMensagem(`Importados: ${sucessos} | Rejeitados/Falhas: ${falhas}`, 'error');
                         document.getElementById('logDetalhado').innerHTML = listaErros.join('<br>');
                         document.getElementById('logDetalhado').classList.remove('hidden');
                     } else {
-                        mostrarMensagem(`Sucesso! ${sucessos} cadastros importados.`, 'success');
+                        mostrarMensagem(`Sucesso! ${sucessos} cadastros validados e importados.`, 'success');
                     }
                 }
             });

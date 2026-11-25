@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'prova_lobby_screen.dart'; 
+import 'prova_lobby_screen.dart';
 
 class ProvaOficialLoginScreen extends StatefulWidget {
   const ProvaOficialLoginScreen({super.key});
@@ -16,9 +16,7 @@ class _ProvaOficialLoginScreenState extends State<ProvaOficialLoginScreen> {
 
   final _nomeController = TextEditingController();
   final _documentoController = TextEditingController();
-  final _escolaController = TextEditingController();
-  final _serieController = TextEditingController();
-  final _professorController = TextEditingController(); // NOVO CONTROLADOR
+  final _codigoTurmaController = TextEditingController();
 
   bool _carregando = false;
 
@@ -26,10 +24,25 @@ class _ProvaOficialLoginScreenState extends State<ProvaOficialLoginScreen> {
   void dispose() {
     _nomeController.dispose();
     _documentoController.dispose();
-    _escolaController.dispose();
-    _serieController.dispose();
-    _professorController.dispose(); // NOVO CONTROLADOR
+    _codigoTurmaController.dispose();
     super.dispose();
+  }
+
+  String _normalizarNome(String texto) {
+    var s = texto.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
+    const comAcento = 'áàâãäéèêëíìîïóòôõöúùûüçñ';
+    const semAcento = 'aaaaaeeeeiiiiooooouuuucn';
+    for (int i = 0; i < comAcento.length; i++) {
+      s = s.replaceAll(comAcento[i], semAcento[i]);
+    }
+    return s;
+  }
+
+  String _formatarCpf(String digitos) {
+    return '${digitos.substring(0, 3)}.'
+        '${digitos.substring(3, 6)}.'
+        '${digitos.substring(6, 9)}-'
+        '${digitos.substring(9, 11)}';
   }
 
   Future<void> _validarAcesso() async {
@@ -39,70 +52,80 @@ class _ProvaOficialLoginScreenState extends State<ProvaOficialLoginScreen> {
 
     try {
       final docInformado = _documentoController.text.trim();
-      final nomeInformado = _nomeController.text.trim().toLowerCase();
-      final escolaInformada = _escolaController.text.trim().toLowerCase();
-      final serieInformada = _serieController.text.trim().toLowerCase();
-      final professorInformado = _professorController.text.trim().toLowerCase(); // NOVO CAMPO
+      final nomeInformado = _normalizarNome(_nomeController.text);
+      final codigoInformado = _codigoTurmaController.text.trim().toUpperCase();
 
-      // 1. Procura o aluno pelo Documento (CPF/Email)
-      final aluno = await _supabase
-          .from('alunos_oficiais')
-          .select()
-          .eq('documento', docInformado)
+      // 1. Valida o Código da Turma gerado pelo professor
+      final registroCodigo = await _supabase
+          .from('codigos_aplicacao')
+          .select('professor_email, professor_nome, ativo')
+          .eq('codigo', codigoInformado)
+          .eq('ativo', true)
           .maybeSingle();
 
-      // Verifica se o aluno existe
+      if (registroCodigo == null) {
+        _mostrarErro('Código da turma inválido ou já encerrado pelo professor.');
+        return;
+      }
+
+      // 2. Procura o aluno pelo Documento (CPF com/sem máscara ou E-mail)
+      var query = _supabase.from('alunos_oficiais').select();
+
+      if (docInformado.contains('@')) {
+        query = query.ilike('documento', docInformado.toLowerCase());
+      } else {
+        final somenteDigitos = docInformado.replaceAll(RegExp(r'\D'), '');
+        if (somenteDigitos.length == 11) {
+          final cpfComMascara = _formatarCpf(somenteDigitos);
+          query = query.or('documento.eq.$somenteDigitos,documento.eq.$cpfComMascara');
+        } else if (somenteDigitos.isNotEmpty) {
+          query = query.or('documento.eq.$somenteDigitos,documento.ilike.$docInformado');
+        } else {
+          query = query.ilike('documento', docInformado);
+        }
+      }
+
+      final aluno = await query.limit(1).maybeSingle();
+
       if (aluno == null) {
-        _mostrarErro('Documento não encontrado na lista oficial. Verifique se digitou corretamente.');
+        _mostrarErro('Documento ou e-mail não encontrado na lista oficial. Verifique se digitou corretamente.');
         return;
       }
 
-      // NOVO: BLOQUEIO DO PROFESSOR
-      final statusAtual = aluno['status_acesso']?.toString().toLowerCase() ?? 'bloqueado';
-      if (statusAtual != 'liberado') {
-        _mostrarErro('Acesso bloqueado! Aguarde o professor da sua turma liberar a sua prova.');
-        return;
-      }
-      // 2. Valida se os outros dados estão corretos (ignorando maiúsculas e minúsculas)
-      final nomeBanco = aluno['nome']?.toString().trim().toLowerCase() ?? '';
-      final escolaBanco = aluno['escola']?.toString().trim().toLowerCase() ?? '';
-      final serieBanco = aluno['serie']?.toString().trim().toLowerCase() ?? '';
-      final professorBanco = aluno['professor_aplicador']?.toString().trim().toLowerCase() ?? ''; // NOVO CAMPO
-
+      // 3. Valida o Nome do aluno
+      final nomeBanco = _normalizarNome(aluno['nome']?.toString() ?? '');
       if (nomeBanco != nomeInformado) {
         _mostrarErro('O Nome informado não corresponde ao documento cadastrado.');
         return;
       }
-      if (escolaBanco != escolaInformada) {
-        _mostrarErro('A Escola informada não corresponde ao seu cadastro oficial.');
-        return;
-      }
-      if (serieBanco != serieInformada) {
-        _mostrarErro('A Série informada não corresponde ao seu cadastro oficial.');
-        return;
-      }
-      if (professorBanco != professorInformado) {
-        _mostrarErro('O Professor Aplicador informado não está correto.');
-        return;
-      }
 
-     // 3. SE TUDO ESTIVER CORRETO, LIBERA O ACESSO!
+      // 4. Registra o professor da aplicação no cadastro do aluno e libera o acesso
+      final profEmail = registroCodigo['professor_email'].toString().trim().toLowerCase();
+      final profNome = registroCodigo['professor_nome'].toString().trim();
+
+      await _supabase.from('alunos_oficiais').update({
+        'email_professor': profEmail,
+        'professor_aplicador': profNome,
+        'status_acesso': 'liberado',
+      }).eq('id', aluno['id']);
+
       if (!mounted) return;
-      
-      final String alunoIdOficial = aluno['id']; // <-- CAPTURA O ID DA TABELA OFICIAL
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Acesso Autorizado!'), backgroundColor: Colors.green),
-      );
 
-      // Leva o aluno para o Lobby enviando o ID Oficial
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => ProvaLobbyScreen(alunoOficialId: alunoIdOficial), // <-- PASSA O ID AQUI
+      final String alunoIdOficial = aluno['id'].toString();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Acesso Autorizado! Aplicador: $profNome'),
+          backgroundColor: Colors.green,
         ),
       );
 
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ProvaLobbyScreen(alunoOficialId: alunoIdOficial),
+        ),
+      );
     } catch (e) {
       _mostrarErro('Erro ao validar acesso: $e');
     } finally {
@@ -114,7 +137,7 @@ class _ProvaOficialLoginScreenState extends State<ProvaOficialLoginScreen> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(msg, style: const TextStyle(fontWeight: FontWeight.bold)), 
+        content: Text(msg, style: const TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: Colors.redAccent,
         duration: const Duration(seconds: 4),
       ),
@@ -141,13 +164,13 @@ class _ProvaOficialLoginScreenState extends State<ProvaOficialLoginScreen> {
                 const Icon(Icons.security, size: 80, color: Colors.blueAccent),
                 const SizedBox(height: 16),
                 const Text(
-                  'Acesso Restrito',
+                  'Acesso à Prova Oficial',
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'Preencha exatamente como está no seu cadastro escolar para liberar a prova.',
+                  'Informe seu nome completo, CPF ou e-mail cadastrado e o código fornecido pelo professor.',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: Colors.grey),
                 ),
@@ -155,57 +178,38 @@ class _ProvaOficialLoginScreenState extends State<ProvaOficialLoginScreen> {
 
                 TextFormField(
                   controller: _nomeController,
+                  textCapitalization: TextCapitalization.words,
                   decoration: InputDecoration(
                     labelText: 'Nome Completo',
                     prefixIcon: const Icon(Icons.person),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  validator: (v) => v!.isEmpty ? 'Campo obrigatório' : null,
+                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Campo obrigatório' : null,
                 ),
                 const SizedBox(height: 16),
 
                 TextFormField(
                   controller: _documentoController,
                   decoration: InputDecoration(
-                    labelText: 'Documento (CPF ou Email)',
+                    labelText: 'Documento (CPF ou E-mail)',
                     prefixIcon: const Icon(Icons.badge),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  validator: (v) => v!.isEmpty ? 'Campo obrigatório' : null,
+                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Campo obrigatório' : null,
                 ),
                 const SizedBox(height: 16),
 
                 TextFormField(
-                  controller: _escolaController,
+                  controller: _codigoTurmaController,
+                  textCapitalization: TextCapitalization.characters,
+                  style: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 3),
                   decoration: InputDecoration(
-                    labelText: 'Nome da Escola',
-                    prefixIcon: const Icon(Icons.school),
+                    labelText: 'Código da Turma',
+                    hintText: 'Ex: A7K9P2',
+                    prefixIcon: const Icon(Icons.vpn_key),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  validator: (v) => v!.isEmpty ? 'Campo obrigatório' : null,
-                ),
-                const SizedBox(height: 16),
-
-                TextFormField(
-                  controller: _serieController,
-                  decoration: InputDecoration(
-                    labelText: 'Série / Ano',
-                    prefixIcon: const Icon(Icons.class_),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  validator: (v) => v!.isEmpty ? 'Campo obrigatório' : null,
-                ),
-                const SizedBox(height: 16),
-
-                // NOVO CAMPO: PROFESSOR APLICADOR
-                TextFormField(
-                  controller: _professorController,
-                  decoration: InputDecoration(
-                    labelText: 'Professor Aplicador da Prova',
-                    prefixIcon: const Icon(Icons.assignment_ind),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  validator: (v) => v!.isEmpty ? 'Campo obrigatório' : null,
+                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Informe o código passado pelo professor' : null,
                 ),
                 const SizedBox(height: 32),
 

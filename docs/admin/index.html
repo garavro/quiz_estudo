@@ -20,6 +20,7 @@
     .card { background: white; padding: 22px; margin-bottom: 22px; border-radius: 14px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
     label { font-weight: bold; display: block; margin-top: 12px; margin-bottom: 5px; }
     input, textarea, select { width: 100%; padding: 11px; border-radius: 8px; border: 1px solid var(--borda); font-size: 15px; background: white; }
+    select:disabled { background: #eef2f7; color: #444; cursor: not-allowed; opacity: 1; }
     textarea { min-height: 110px; resize: vertical; }
     button { margin-top: 14px; padding: 12px 18px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; background: var(--azul); color: white; font-size: 15px; }
     button:hover { background: var(--azul-escuro); }
@@ -74,7 +75,7 @@
   <div class="container">
     <h1>Central de Avaliações</h1>
 
-  <!-- LOGIN -->
+    <!-- LOGIN -->
     <div id="loginCard" class="card">
       <h2>Login Administrativo</h2>
       
@@ -104,7 +105,7 @@
         <button class="danger" onclick="logout()" style="margin: 0; padding: 8px 15px;">Sair</button>
       </div>
 
-      <!-- MENU DE ABAS ATUALIZADO -->
+      <!-- MENU DE ABAS -->
       <div class="tabs">
         <button id="tabQuestoesBtn" class="tab-btn active" onclick="mudarAba('questoes')">📚 Gerenciar Questões</button>
         <button id="tabProvasBtn" class="tab-btn" onclick="mudarAba('provas')">📝 Montar Provas</button>
@@ -133,7 +134,7 @@
               <div class="latex-item"><strong>Fração</strong><code>$\frac{a}{b}$</code><button type="button" onclick="inserirLatex('$\\frac{a}{b}$')">Inserir</button></div>
               <div class="latex-item"><strong>Potência</strong><code>$x^2$</code><button type="button" onclick="inserirLatex('$x^2$')">Inserir</button></div>
               <div class="latex-item"><strong>Raiz</strong><code>$\sqrt{x}$</code><button type="button" onclick="inserirLatex('$\\sqrt{x}$')">Inserir</button></div>
-              <div class="latex-item"><strong>Equação 2º grau</strong><code>$ax^2+bx+c=0$</code><button type="button" onclick="inserirLatex('$ax^2+bx+c=0$')">Inserir</button></div>
+              <div class="latex-item"><strong>Sistema 2x2</strong><code>$\begin{cases} ax + by = c \\ dx + ey = f \end{cases}$</code><button type="button" onclick="inserirLatex('$\\begin{cases} ax + by = c \\\\ dx + ey = f \\end{cases}$')">Inserir</button></div>
             </div>
           </div>
 
@@ -165,8 +166,8 @@
               </select>
             </div>
             <div>
-              <label for="nivel">Nível</label>
-              <select id="nivel">
+              <label for="nivel">Nível (Vinculado à Série/Categoria)</label>
+              <select id="nivel" disabled>
                 <option value="nivel_1">Nível I</option>
                 <option value="nivel_2">Nível II</option>
                 <option value="nivel_3">Nível III</option>
@@ -260,54 +261,54 @@
         
         <div class="card mb-4" id="secaoCriarProva" style="border: 2px solid #1a9b55;">
           <h2 class="mb-0">1. Criar ou Editar Prova Oficial</h2>
-            <div class="mb-3" style="margin-top: 15px;">
-                <label class="form-label font-weight-bold" style="margin-top: 0;">Selecione uma prova para editar (ou crie uma nova)</label>
-                <div style="display: flex; gap: 10px; width: 100%;">
-                    <select id="seletorProvaEditar" onchange="window.carregarDadosDaProvaParaEdicao()" style="flex-grow: 1; border: 2px solid var(--azul); font-weight: bold; background: #eef4ff;">
-                        <option value="">-- Criar Nova Prova --</option>
-                    </select>
-                    <button class="secondary" onclick="window.limparFormularioProva()" style="margin: 0; padding: 11px 18px;">Limpar</button>
-                </div>
+          <div class="mb-3" style="margin-top: 15px;">
+            <label class="form-label font-weight-bold" style="margin-top: 0;">Selecione uma prova para editar (ou crie uma nova)</label>
+            <div style="display: flex; gap: 10px; width: 100%;">
+              <select id="seletorProvaEditar" onchange="window.carregarDadosDaProvaParaEdicao()" style="flex-grow: 1; border: 2px solid var(--azul); font-weight: bold; background: #eef4ff;">
+                <option value="">-- Criar Nova Prova --</option>
+              </select>
+              <button class="secondary" onclick="window.limparFormularioProva()" style="margin: 0; padding: 11px 18px;">Limpar</button>
             </div>
-            
-            <hr style="margin: 20px 0; border: none; border-top: 1px solid #d8dee8;">
+          </div>
+          
+          <hr style="margin: 20px 0; border: none; border-top: 1px solid #d8dee8;">
 
-            <input type="hidden" id="provaEditandoId" value="">
-            
-            <div class="row">
-                <div>
-                    <label>Título da Prova</label>
-                    <input type="text" id="tituloProva" placeholder="Ex: Simulado Geral">
-                </div>
-                <div>
-                    <label>Nível Alvo</label>
-                    <input type="text" id="nivelAlvoProva" placeholder="Ex: nivel_4">
-                </div>
+          <input type="hidden" id="provaEditandoId" value="">
+          
+          <div class="row">
+            <div>
+              <label>Título da Prova</label>
+              <input type="text" id="tituloProva" placeholder="Ex: Simulado Geral">
             </div>
-            <div class="row-3">
-                <div>
-                    <label>Duração (Min)</label>
-                    <input type="number" id="duracaoProva" placeholder="Ex: 120">
-                </div>
-                <div>
-                    <label>Abertura</label>
-                    <input type="datetime-local" id="dataAberturaProva">
-                </div>
-                <div>
-                    <label>Fechamento</label>
-                    <input type="datetime-local" id="dataFechamentoProva">
-                </div>
+            <div>
+              <label>Nível Alvo</label>
+              <input type="text" id="nivelAlvoProva" placeholder="Ex: nivel_4">
             </div>
-            <div class="mb-3">
-                <label>Status</label>
-                <select id="statusProva">
-                    <option value="rascunho">Rascunho</option>
-                    <option value="publicada">Publicada</option>
-                </select>
+          </div>
+          <div class="row-3">
+            <div>
+              <label>Duração (Min)</label>
+              <input type="number" id="duracaoProva" placeholder="Ex: 120">
             </div>
-            
-            <button class="success" id="btnSalvarProva" onclick="window.salvarProva()">Salvar Nova Prova</button>
-            <div id="statusCriacaoProva" class="status"></div>
+            <div>
+              <label>Abertura</label>
+              <input type="datetime-local" id="dataAberturaProva">
+            </div>
+            <div>
+              <label>Fechamento</label>
+              <input type="datetime-local" id="dataFechamentoProva">
+            </div>
+          </div>
+          <div class="mb-3">
+            <label>Status</label>
+            <select id="statusProva">
+              <option value="rascunho">Rascunho</option>
+              <option value="publicada">Publicada</option>
+            </select>
+          </div>
+          
+          <button class="success" id="btnSalvarProva" onclick="window.salvarProva()">Salvar Nova Prova</button>
+          <div id="statusCriacaoProva" class="status"></div>
         </div>
 
         <div class="card">
@@ -331,38 +332,60 @@
       </div>
 
       <!-- ========================================== -->
-      <!-- ABA 3: RESULTADOS E GABARITOS (NOVA) -->
+      <!-- ABA 3: RESULTADOS E GABARITOS -->
       <!-- ========================================== -->
       <div id="tabResultados" class="tab-content">
         <div class="card" style="border: 2px solid #8a2be2;">
           <h2>Resultados dos Alunos</h2>
           <p>Selecione uma prova oficial para visualizar o desempenho dos alunos.</p>
           
-          <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+          <div style="display: flex; gap: 10px; margin-bottom: 10px;">
             <select id="seletorProvasResultados" onchange="carregarResultadosDaProva()" style="flex-grow: 1; border: 2px solid #8a2be2; font-weight: bold; background: #f3e5f5;">
               <option value="">Selecione uma prova...</option>
             </select>
             <button class="success" onclick="exportarTabelaParaCSV()" style="margin: 0; white-space: nowrap;">📥 Exportar Planilha (CSV)</button>
           </div>
 
+          <div class="row-3" style="margin-bottom: 15px;">
+            <div>
+              <label for="filtroResultadoRede">Filtrar por Rede</label>
+              <select id="filtroResultadoRede" onchange="filtrarResultadosTabela()">
+                <option value="">Todas</option>
+              </select>
+            </div>
+            <div>
+              <label for="filtroResultadoMunicipio">Filtrar por Município</label>
+              <select id="filtroResultadoMunicipio" onchange="filtrarResultadosTabela()">
+                <option value="">Todos</option>
+              </select>
+            </div>
+            <div>
+              <label for="filtroResultadoEscola">Filtrar por Escola</label>
+              <select id="filtroResultadoEscola" onchange="filtrarResultadosTabela()">
+                <option value="">Todas</option>
+              </select>
+            </div>
+          </div>
+
           <div id="statusResultados" class="status"></div>
 
-       <div style="overflow-x:auto; margin-top: 20px;">
+          <div style="overflow-x:auto; margin-top: 20px;">
             <table>
               <thead>
                 <tr>
                   <th>Nome do Aluno</th>
                   <th>Município</th>
-                  <th>Rede</th> <!-- NOVA COLUNA ADICIONADA -->
+                  <th>Rede</th>
                   <th>Escola</th>
                   <th>Turma</th>
                   <th>Turno</th>
+                  <th>Professor Aplicador</th>
                   <th>Status da Prova</th>
                   <th>Pontuação / Nota</th>
                 </tr>
               </thead>
               <tbody id="tabelaResultados">
-                <tr><td colspan='8' style="text-align: center; color: #777;">Selecione uma prova acima para carregar os resultados.</td></tr>
+                <tr><td colspan='9' style="text-align: center; color: #777;">Selecione uma prova acima para carregar os resultados.</td></tr>
               </tbody>
             </table>
           </div>
@@ -384,6 +407,7 @@
     let previewConfirmado = false;
     let campoLatexAtivo = "pergunta";
     let provasOficiaisGlobais = [];
+    let resultadosCarregados = [];
 
     window.mostrarStatus = (id, msg, tipo) => { const el = document.getElementById(id); el.className = "status " + tipo; el.innerHTML = msg; el.style.display = "block"; };
     window.limparStatus = (id) => { const el = document.getElementById(id); el.className = "status"; el.innerHTML = ""; el.style.display = "none"; };
@@ -407,7 +431,7 @@
       }
     };
 
-   // ==========================================
+    // ==========================================
     // LOGIN E CADASTRO ADMINISTRATIVO
     // ==========================================
     
@@ -440,6 +464,7 @@
       document.getElementById("appAdmin").classList.remove("hidden");
       document.getElementById("usuarioLogado").innerText = user.email;
       
+      atualizarNivelAutomatico();
       registrarCamposLatex();
       listarQuestoes();
       window.atualizarListasDeProvas();
@@ -591,6 +616,7 @@
     };
 
     window.pegarFormulario = function() {
+      atualizarNivelAutomatico();
       return {
         pergunta: document.getElementById("pergunta").value.trim(),
         imagem_url: document.getElementById("imagem_url").value.trim(),
@@ -667,6 +693,8 @@
       document.getElementById("questaoIdEdicao").value = "";
       document.getElementById("pergunta").value = "";
       removerImagemDaQuestao();
+      document.getElementById("serie").value = "4 e 5 ano";
+      atualizarNivelAutomatico();
       document.getElementById("alternativa_correta").value = "";
       document.getElementById("alternativa_errada1").value = "";
       document.getElementById("alternativa_errada2").value = "";
@@ -747,7 +775,7 @@
       }
 
       document.getElementById("serie").value = q.serie;
-      document.getElementById("nivel").value = q.nivel;
+      atualizarNivelAutomatico();
       document.getElementById("dificuldade").value = q.dificuldade;
       document.getElementById("alternativa_correta").value = q.alternativa_correta;
       document.getElementById("alternativa_errada1").value = q.alternativa_errada1;
@@ -766,30 +794,29 @@
       listarQuestoes();
     };
 
-	window.exportarTabelaParaCSV = function() {
+    window.exportarTabelaParaCSV = function() {
       const tabela = document.getElementById("tabelaResultados");
-      if (!tabela || tabela.rows.length <= 1 || tabela.rows[0].cells.length === 1) {
+      if (!tabela || tabela.rows.length === 0 || tabela.rows[0].cells.length === 1) {
         return mostrarStatus("statusResultados", "Não há resultados para exportar. Selecione uma prova primeiro.", "aviso");
       }
 
       let csvContent = "";
       
-      // Lê as linhas da tabela
+      // Cabeçalho CSV
+      csvContent += '"Nome do Aluno";"Município";"Rede";"Escola";"Turma";"Turno";"Professor Aplicador";"Status da Prova";"Pontuação / Nota"\n';
+
+      // Lê as linhas visíveis da tabela
       for (let i = 0; i < tabela.rows.length; i++) {
         let rowData = [];
-        const cols = tabela.rows[i].querySelectorAll("td, th");
+        const cols = tabela.rows[i].querySelectorAll("td");
         
         for (let j = 0; j < cols.length; j++) {
-          // Limpa quebras de linha e formata corretamente para CSV
           let data = cols[j].innerText.replace(/(\r\n|\n|\r)/gm, " ").trim();
-          // Coloca entre aspas para evitar problemas com vírgulas nos nomes/escolas
           rowData.push(`"${data}"`);
         }
-        // Junta colunas com ponto e vírgula (formato Excel Brasil/Portugal)
         csvContent += rowData.join(";") + "\n";
       }
 
-      // Adiciona o BOM (Byte Order Mark) para que o Excel leia os acentos corretamente
       const bom = "\uFEFF";
       const blob = new Blob([bom + csvContent], { type: 'text/csv;charset=utf-8;' });
       
@@ -809,7 +836,7 @@
     };
 
     // ==========================================
-    // LÓGICA DE MONTAR E EDITAR PROVAS (ATUALIZADA)
+    // LÓGICA DE MONTAR E EDITAR PROVAS
     // ==========================================
     window.atualizarListasDeProvas = async function() {
       try {
@@ -822,7 +849,6 @@
         
         provasOficiaisGlobais = data || [];
 
-        // Atualiza o seletor da Secção 1 (Edição)
         const seletorEdicao = document.getElementById('seletorProvaEditar');
         if (seletorEdicao) {
             seletorEdicao.innerHTML = '<option value="">-- Criar Nova Prova --</option>';
@@ -831,7 +857,6 @@
             });
         }
 
-        // Atualiza o seletor da Secção 2 (Vincular Questões)
         const seletorVincular = document.getElementById('seletorProvaVincular');
         if (seletorVincular) {
             seletorVincular.innerHTML = '<option value="">Selecione a prova...</option>';
@@ -840,7 +865,6 @@
             });
         }
         
-        // Atualiza o seletor da secção de Resultados
         const seletorResultados = document.getElementById('seletorProvasResultados');
         if (seletorResultados) {
             seletorResultados.innerHTML = '<option value="">Selecione uma prova...</option>';
@@ -1014,20 +1038,97 @@
     };
 
     // ==========================================
-    // LÓGICA DE RESULTADOS E GABARITOS 
+    // LÓGICA DE RESULTADOS E FILTROS
     // ==========================================
+    window.popularFiltrosResultados = function(dados) {
+      const preencherSelect = (idSelect, campo, rotuloPadrao) => {
+        const select = document.getElementById(idSelect);
+        if (!select) return;
+
+        const valoresUnicos = [...new Set(
+          dados
+            .map(item => item[campo])
+            .filter(valor => valor && valor !== '-')
+        )].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
+        select.innerHTML = `<option value="">${rotuloPadrao}</option>`;
+        valoresUnicos.forEach(valor => {
+          select.innerHTML += `<option value="${escaparHtml(valor)}">${escaparHtml(valor)}</option>`;
+        });
+
+        if (dados.some(item => item[campo] === '-')) {
+          select.innerHTML += `<option value="-">Não informado (-)</option>`;
+        }
+      };
+
+      preencherSelect("filtroResultadoRede", "rede", "Todas");
+      preencherSelect("filtroResultadoMunicipio", "municipio", "Todos");
+      preencherSelect("filtroResultadoEscola", "escola", "Todas");
+    };
+
+    window.filtrarResultadosTabela = function() {
+      const tabela = document.getElementById("tabelaResultados");
+      const filtroRede = document.getElementById("filtroResultadoRede").value;
+      const filtroMunicipio = document.getElementById("filtroResultadoMunicipio").value;
+      const filtroEscola = document.getElementById("filtroResultadoEscola").value;
+
+      const filtrados = resultadosCarregados.filter(item => {
+        const passaRede = !filtroRede || item.rede === filtroRede;
+        const passaMunicipio = !filtroMunicipio || item.municipio === filtroMunicipio;
+        const passaEscola = !filtroEscola || item.escola === filtroEscola;
+        return passaRede && passaMunicipio && passaEscola;
+      });
+
+      if (filtrados.length === 0) {
+        tabela.innerHTML = "<tr><td colspan='9' style='text-align: center;'>Nenhum resultado encontrado para os filtros selecionados.</td></tr>";
+        return;
+      }
+
+      tabela.innerHTML = "";
+      filtrados.forEach(item => {
+        let corStatus = "#eef4ff";
+        let corTextoStatus = "var(--azul)";
+        if (item.status === 'finalizada') {
+          corStatus = "#effaf3";
+          corTextoStatus = "#1a9b55";
+        } else if (item.status === 'bloqueada' || item.status === 'anulada') {
+          corStatus = "#ffdada";
+          corTextoStatus = "#9b1c1c";
+        }
+
+        tabela.innerHTML += `
+          <tr>
+            <td>${escaparHtml(item.nomeExibicao)}</td>
+            <td>${escaparHtml(item.municipio)}</td>
+            <td>${escaparHtml(item.rede)}</td>
+            <td>${escaparHtml(item.escola)}</td>
+            <td>${escaparHtml(item.turma)}</td>
+            <td>${escaparHtml(item.turno)}</td>
+            <td>${escaparHtml(item.professorAplicador)}</td>
+            <td>
+              <span class="tag" style="background: ${corStatus}; color: ${corTextoStatus};">
+                ${escaparHtml((item.status || 'Desconhecido').toUpperCase())}
+              </span>
+            </td>
+            <td style="font-size: 16px;"><strong>${escaparHtml(item.nota.toString())}</strong></td>
+          </tr>
+        `;
+      });
+    };
+
     window.carregarResultadosDaProva = async function() {
       const provaId = document.getElementById("seletorProvasResultados").value;
       const tabela = document.getElementById("tabelaResultados");
       
+      resultadosCarregados = [];
+      popularFiltrosResultados([]);
+
       if (!provaId) {
-        // ATUALIZADO COLSPAN PARA 8
-        tabela.innerHTML = "<tr><td colspan='8' style='text-align: center; color: #777;'>Selecione uma prova acima para carregar os resultados.</td></tr>";
+        tabela.innerHTML = "<tr><td colspan='9' style='text-align: center; color: #777;'>Selecione uma prova acima para carregar os resultados.</td></tr>";
         return;
       }
 
-      // ATUALIZADO COLSPAN PARA 8
-      tabela.innerHTML = "<tr><td colspan='8'>Buscando resultados do banco de dados...</td></tr>";
+      tabela.innerHTML = "<tr><td colspan='9'>Buscando resultados do banco de dados...</td></tr>";
       limparStatus("statusResultados");
 
       try {
@@ -1039,8 +1140,7 @@
         if (errSessoes) throw errSessoes;
 
         if (!sessoes || sessoes.length === 0) {
-          // ATUALIZADO COLSPAN PARA 8
-          tabela.innerHTML = "<tr><td colspan='8' style='text-align: center;'>Nenhum aluno iniciou esta prova ainda.</td></tr>";
+          tabela.innerHTML = "<tr><td colspan='9' style='text-align: center;'>Nenhum aluno iniciou esta prova ainda.</td></tr>";
           return;
         }
 
@@ -1058,10 +1158,9 @@
           perfisMap[p.id] = p;
         });
 
-        // ADICIONADO 'rede' NA SELEÇÃO DO BANCO DE DADOS AQUI!
         const { data: oficiais, error: errOficiais } = await supabase
           .from('alunos_oficiais')
-          .select('id, nome, escola, municipio, rede, turma, turno')
+          .select('id, nome, escola, municipio, rede, turma, turno, professor_aplicador, email_professor')
           .in('id', alunosIds);
 
         if (errOficiais) throw errOficiais;
@@ -1071,56 +1170,34 @@
           oficiaisMap[o.id] = o;
         });
 
-        tabela.innerHTML = "";
-        
-        sessoes.forEach(sessao => {
+        resultadosCarregados = sessoes.map(sessao => {
           const perfil = perfisMap[sessao.aluno_id] || {};
           const oficial = oficiaisMap[sessao.aluno_id] || {};
           
-          const nomeExibicao = oficial.nome || perfil.nome_completo || "Aluno " + sessao.aluno_id.substring(0, 5);
-          
-          const municipio = oficial.municipio || '-';
-          const rede = oficial.rede || '-'; // NOVA VARIÁVEL 'rede'
-          const escola = oficial.escola || '-';
-          const turma = oficial.turma || '-';
-          const turno = oficial.turno || '-';
-          
-          const nota = (sessao.nota_final !== null && sessao.nota_final !== undefined) 
-                        ? sessao.nota_final 
-                        : 'Em andamento';
-                        
-          let corStatus = "#eef4ff"; let corTextoStatus = "var(--azul)";
-          if (sessao.status === 'finalizada') {
-            corStatus = "#effaf3"; corTextoStatus = "#1a9b55"; 
-          } else if (sessao.status === 'bloqueada' || sessao.status === 'anulada') {
-            corStatus = "#ffdada"; corTextoStatus = "#9b1c1c"; 
-          }
-
-          tabela.innerHTML += `
-            <tr>
-              <td>${escaparHtml(nomeExibicao)}</td>
-              <td>${escaparHtml(municipio)}</td>
-              <td>${escaparHtml(rede)}</td> <!-- NOVA COLUNA HTML -->
-              <td>${escaparHtml(escola)}</td>
-              <td>${escaparHtml(turma)}</td>
-              <td>${escaparHtml(turno)}</td>
-              <td>
-                <span class="tag" style="background: ${corStatus}; color: ${corTextoStatus};">
-                  ${escaparHtml((sessao.status || 'Desconhecido').toUpperCase())}
-                </span>
-              </td>
-              <td style="font-size: 16px;"><strong>${escaparHtml(nota.toString())}</strong></td>
-            </tr>
-          `;
+          return {
+            nomeExibicao: oficial.nome || perfil.nome_completo || "Aluno " + sessao.aluno_id.substring(0, 5),
+            municipio: oficial.municipio || '-',
+            rede: oficial.rede || '-',
+            escola: oficial.escola || '-',
+            turma: oficial.turma || '-',
+            turno: oficial.turno || '-',
+            professorAplicador: oficial.professor_aplicador || oficial.email_professor || '-',
+            status: sessao.status || 'Desconhecido',
+            nota: (sessao.nota_final !== null && sessao.nota_final !== undefined)
+              ? sessao.nota_final
+              : 'Em andamento'
+          };
         });
+
+        popularFiltrosResultados(resultadosCarregados);
+        filtrarResultadosTabela();
         
       } catch (error) {
-        // ATUALIZADO COLSPAN PARA 8
-        tabela.innerHTML = `<tr><td colspan='8' style='color: red;'>Erro ao processar dados: ${error.message}</td></tr>`;
+        tabela.innerHTML = `<tr><td colspan='9' style='color: red;'>Erro ao processar dados: ${error.message}</td></tr>`;
       }
     };
 
-  // ==========================================
+    // ==========================================
     // INIT (Lógica de inicialização segura)
     // ==========================================
     supabase.auth.getUser().then(async ({ data }) => { 
@@ -1129,7 +1206,6 @@
         if (admin) {
           abrirPainel(data.user);
         } else {
-          // Desloga automaticamente quem tinha conta mas perdeu as permissões
           await supabase.auth.signOut();
         }
       } 

@@ -41,9 +41,9 @@ class _MenuScreenState extends State<MenuScreen> {
   bool _carregandoJogar = false;
   bool _carregandoLogout = false;
   bool _atualizandoSerie = false;
-bool _verificandoPermissoes = true; // NOVO: Controla a tela de carregamento inicial
-  bool _exibirProvaOficial = false;   // NOVO: Controla o botão Prova Oficial
+
   bool _exibirAreaProfessor = false;  // NOVO: Controla o botão Área do Professor
+  bool _verificandoPermissoes = true;
 
   static const List<String> _seriesEscolares = [
     '4º ano do Ensino Fundamental',
@@ -72,29 +72,21 @@ _verificarPermissoesEProvas(); // <--- Adicionada a chamada da nova função aqu
 Future<void> _verificarPermissoesEProvas() async {
     try {
       final supabase = Supabase.instance.client;
-      
-      // 1. Verifica se existe pelo menos UMA prova oficial cadastrada
-      final provas = await supabase
-          .from('provas_oficiais')
-          .select('id')
-          .limit(1);
-          
-      final temProva = provas.isNotEmpty;
 
-      // 2. Verifica se o email do usuário logado é de um Professor ou Admin
+      // Verifica se o email do usuário logado é de um Professor ou Admin
       bool eProfessorOuAdmin = false;
       final user = supabase.auth.currentUser;
 
       if (user != null && user.email != null) {
         final emailLogado = user.email!.toLowerCase();
-        
+
         // Procura na tabela de professores
         final prof = await supabase
             .from('professores_aplicadores')
             .select('id')
             .eq('email', emailLogado)
             .maybeSingle();
-            
+
         if (prof != null) {
           eProfessorOuAdmin = true;
         } else {
@@ -104,16 +96,15 @@ Future<void> _verificarPermissoesEProvas() async {
               .select('id')
               .eq('user_id', user.id)
               .maybeSingle();
-              
+
           if (admin != null) eProfessorOuAdmin = true;
         }
       }
 
       if (mounted) {
         setState(() {
-          _exibirProvaOficial = temProva;
           _exibirAreaProfessor = eProfessorOuAdmin;
-          _verificandoPermissoes = false; // Terminou de verificar
+          _verificandoPermissoes = false;
         });
       }
     } catch (e) {
@@ -1004,24 +995,23 @@ Widget _conteudoCentral(BuildContext context) {
             ),
             const SizedBox(height: 20),
             
-            // 2. BOTÃO PROVA OFICIAL
-            if (_exibirProvaOficial) ...[
-              AppButton(
-                texto: 'PROVA OFICIAL',
-                largura: larguraBotao,
-                altura: 62,
-                icone: Icons.assignment_rounded,
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const ProvaOficialLoginScreen(),
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 20),
-            ],
+           // 2. BOTÃO PROVA OFICIAL
+            AppButton(
+              texto: 'PROVA OFICIAL',
+              largura: larguraBotao,
+              altura: 62,
+              icone: Icons.assignment_rounded,
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const ProvaOficialLoginScreen(),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 20),
+            
             
             // 3. BOTÃO PLACAR
             AppButton(

@@ -14,53 +14,72 @@ class _ProfessorLoginScreenState extends State<ProfessorLoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _supabase = Supabase.instance.client;
 
+  final _nomeController = TextEditingController();
   final _emailController = TextEditingController();
   final _tokenController = TextEditingController();
 
   bool _carregando = false;
-  bool _codigoEnviado = false; 
+  bool _codigoEnviado = false;
 
   @override
   void dispose() {
+    _nomeController.dispose();
     _emailController.dispose();
     _tokenController.dispose();
     super.dispose();
   }
 
+  String _normalizarTexto(String texto) {
+    var s = texto.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
+    const comAcento = 'áàâãäéèêëíìîïóòôõöúùûüçñ';
+    const semAcento = 'aaaaaeeeeiiiiooooouuuucn';
+    for (int i = 0; i < comAcento.length; i++) {
+      s = s.replaceAll(comAcento[i], semAcento[i]);
+    }
+    return s;
+  }
+
   Future<void> _enviarCodigoParaEmail() async {
     if (!_formKey.currentState!.validate()) return;
-    
+
     setState(() => _carregando = true);
-    
+
     try {
+      final nomeDigitado = _normalizarTexto(_nomeController.text);
       final emailDigitado = _emailController.text.trim().toLowerCase();
 
-      // 1. Verifica se a coordenação já cadastrou este professor na planilha
+      // 1. Verifica se o professor existe na lista oficial (e-mail + nome)
       final profCadastrado = await _supabase
           .from('professores_aplicadores')
-          .select('email')
-          .eq('email', emailDigitado)
+          .select('nome, email')
+          .ilike('email', emailDigitado)
           .maybeSingle();
 
       if (profCadastrado == null) {
-        _mostrarErro('Acesso Negado: Este email não foi cadastrado pela escola na planilha oficial.');
+        _mostrarErro('Acesso Negado: Este e-mail não está na lista oficial de professores.');
         return;
       }
 
-      // 2. Se existe, envia o token
+      final nomeBanco = _normalizarTexto(profCadastrado['nome']?.toString() ?? '');
+      if (nomeBanco != nomeDigitado) {
+        _mostrarErro('O nome informado não corresponde ao e-mail cadastrado na lista oficial.');
+        return;
+      }
+
+      // 2. Envia o token OTP por e-mail
       await _supabase.auth.signInWithOtp(
         email: emailDigitado,
-        shouldCreateUser: true, 
+        shouldCreateUser: true,
       );
-      
+
       if (!mounted) return;
       setState(() {
         _codigoEnviado = true;
         _carregando = false;
       });
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Token enviado! Verifique o seu email.'), backgroundColor: Colors.green),
+        const SnackBar(content: Text('Token enviado! Verifique o seu e-mail.'), backgroundColor: Colors.green),
       );
     } catch (e) {
       _mostrarErro('Erro ao enviar código: $e');
@@ -78,7 +97,7 @@ class _ProfessorLoginScreenState extends State<ProfessorLoginScreen> {
     try {
       final emailDigitado = _emailController.text.trim().toLowerCase();
 
-      // 1. Valida o Token
+      // 1. Valida o Token OTP
       final AuthResponse res = await _supabase.auth.verifyOTP(
         type: OtpType.email,
         email: emailDigitado,
@@ -87,18 +106,17 @@ class _ProfessorLoginScreenState extends State<ProfessorLoginScreen> {
 
       if (res.user == null) throw Exception("Falha de autenticação.");
 
-      // 2. Vincula a chave de segurança ao cadastro feito pela planilha
+      // 2. Vincula o user_id ao cadastro do professor
       await _supabase.from('professores_aplicadores').update({
         'user_id': res.user!.id,
-      }).eq('email', emailDigitado);
+      }).ilike('email', emailDigitado);
 
       if (!mounted) return;
-      
+
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
       );
-
     } catch (e) {
       _mostrarErro('Código inválido ou expirado. Tente novamente.');
     } finally {
@@ -140,20 +158,37 @@ class _ProfessorLoginScreenState extends State<ProfessorLoginScreen> {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'Insira o email cadastrado pela escola para receber a chave de acesso.',
+                  'Informe seu nome e e-mail cadastrados na lista oficial para receber o token de acesso.',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: Colors.grey),
                 ),
-                const SizedBox(height: 40),
+                const SizedBox(height: 32),
+
+                TextFormField(
+                  controller: _nomeController,
+                  enabled: !_codigoEnviado,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: const InputDecoration(
+                    labelText: 'Nome Completo Cadastrado',
+                    prefixIcon: Icon(Icons.person),
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Obrigatório' : null,
+                ),
+                const SizedBox(height: 16),
 
                 TextFormField(
                   controller: _emailController,
                   enabled: !_codigoEnviado,
                   keyboardType: TextInputType.emailAddress,
-                  decoration: const InputDecoration(labelText: 'Email Cadastrado', prefixIcon: Icon(Icons.email), border: OutlineInputBorder()),
+                  decoration: const InputDecoration(
+                    labelText: 'E-mail Cadastrado',
+                    prefixIcon: Icon(Icons.email),
+                    border: OutlineInputBorder(),
+                  ),
                   validator: (v) {
-                    if (v == null || v.isEmpty) return 'Obrigatório';
-                    if (!v.contains('@')) return 'Email inválido';
+                    if (v == null || v.trim().isEmpty) return 'Obrigatório';
+                    if (!v.contains('@')) return 'E-mail inválido';
                     return null;
                   },
                 ),
@@ -170,18 +205,25 @@ class _ProfessorLoginScreenState extends State<ProfessorLoginScreen> {
                       ),
                       onPressed: _carregando ? null : _enviarCodigoParaEmail,
                       icon: _carregando ? const SizedBox.shrink() : const Icon(Icons.send),
-                      label: _carregando 
-                          ? const CircularProgressIndicator(color: Colors.white) 
+                      label: _carregando
+                          ? const CircularProgressIndicator(color: Colors.white)
                           : const Text('RECEBER TOKEN', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                     ),
                   )
                 else ...[
                   Container(
                     padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(color: Colors.green.shade50, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.green.shade200)),
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.green.shade200),
+                    ),
                     child: Column(
                       children: [
-                        const Text('Token enviado ao seu email!', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+                        const Text(
+                          'Token enviado ao seu e-mail!',
+                          style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
+                        ),
                         const SizedBox(height: 16),
                         TextFormField(
                           controller: _tokenController,
@@ -198,8 +240,8 @@ class _ProfessorLoginScreenState extends State<ProfessorLoginScreen> {
                             style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
                             onPressed: _carregando ? null : _validarTokenEEntrar,
                             icon: _carregando ? const SizedBox.shrink() : const Icon(Icons.lock_open),
-                            label: _carregando 
-                                ? const CircularProgressIndicator(color: Colors.white) 
+                            label: _carregando
+                                ? const CircularProgressIndicator(color: Colors.white)
                                 : const Text('VALIDAR E ENTRAR', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                           ),
                         ),
@@ -207,8 +249,11 @@ class _ProfessorLoginScreenState extends State<ProfessorLoginScreen> {
                     ),
                   ),
                   TextButton(
-                    onPressed: () => setState(() { _codigoEnviado = false; _tokenController.clear(); }),
-                    child: const Text('Corrigir email ou reenviar token'),
+                    onPressed: () => setState(() {
+                      _codigoEnviado = false;
+                      _tokenController.clear();
+                    }),
+                    child: const Text('Corrigir dados ou reenviar token'),
                   )
                 ],
               ],
